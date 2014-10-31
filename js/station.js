@@ -1,68 +1,78 @@
 (function() {
-  var camera, keyboard, renderStack, renderer, scene;
+  var SCALE, animate, camera, clock, gameLoop, keyboard, render, renderer;
+
+  SCALE = 1;
 
   window.KM = function(kms) {
-    return kms / 10.0;
+    return M(kms) * 1000;
   };
 
-  window.TON = function(t) {
-    return t;
+  window.M = function(mts) {
+    return mts * SCALE;
+  };
+
+  window.mksVector = function(gameVector) {
+    var vector;
+    vector = gameVector.clone().multiplyScalar(1.0 / SCALE);
+    vector.setGameVector = function(v) {
+      return v.copy(this).multiplyScalar(SCALE);
+    };
+    return vector;
   };
 
   window.LEO = KM(160);
 
-  scene = new THREE.Scene();
+  window.scene = new THREE.Scene();
 
-  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, KM(0.0001), KM(100000));
+  camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, M(0.001), KM(100000));
 
   renderer = new THREE.WebGLRenderer({
-    antialias: true
+    antialias: true,
+    logarithmicDepthBuffer: true
   });
 
   renderer.setSize(window.innerWidth, window.innerHeight);
 
   renderer.shadowMapEnabled = true;
 
-  keyboard = new THREEx.KeyboardState();
+  keyboard = new THREEx.KeyboardState;
 
-  renderStack = [];
+  clock = new THREE.Clock(false);
+
+  scene.add(new THREE.AmbientLight(0x888888));
+
+  gameLoop = [];
 
   window.setup = function() {
     var planet, ship;
-    planet = Planet.create('Earth', KM(6371));
-    ship = new Ship();
+    planet = Planet.create('Earth', KM(6378));
     scene.add(planet);
+    ship = new Ship(M(10));
+    scene.add(ship);
     ship.orbit(planet, LEO);
-    ship.add(camera);
-    camera.position.z = KM(0.1);
-    scene.add(new THREE.AmbientLight(0x888888));
-    return renderStack.push(ship);
+    ship.captureCamera(camera);
+    ship.updateEllipse();
+    gameLoop.push(ship.control(keyboard));
+    gameLoop.push(camera.control(keyboard, renderer));
+    return window.ship = ship;
   };
 
-  window.render = function() {
-    var f, _i, _len;
-    for (_i = 0, _len = renderStack.length; _i < _len; _i++) {
-      f = renderStack[_i];
-      if (f.control) {
-        f.control(keyboard);
-      } else {
-        f();
-      }
-    }
-    if (keyboard.pressed("left")) {
-      camera.rotation.y += 0.1;
-    }
-    if (keyboard.pressed("right")) {
-      camera.rotation.y -= 0.1;
-    }
-    if (keyboard.pressed("up")) {
-      camera.position.z /= 2.0;
-    }
-    if (keyboard.pressed("down")) {
-      camera.position.z *= 2.0;
-    }
-    requestAnimationFrame(render);
+  window.run = function() {
+    render();
+    return animate();
+  };
+
+  render = function() {
     return renderer.render(scene, camera);
+  };
+
+  animate = function() {
+    var f, _i, _len;
+    for (_i = 0, _len = gameLoop.length; _i < _len; _i++) {
+      f = gameLoop[_i];
+      f();
+    }
+    return requestAnimationFrame(run);
   };
 
   document.body.appendChild(renderer.domElement);
@@ -70,21 +80,18 @@
 }).call(this);
 
 (function() {
-  var G, Planet, Ship,
+  var Planet, Ship, mksG,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-  G = 6.67384e-5;
+  mksG = 6.67384e-11;
 
   Planet = {
     create: function(name, radius) {
-      var canonicalSize, matrix, mesh, ratio;
-      mesh = THREEx.Planets["create" + name]();
+      var mesh;
+      mesh = THREEx.Planets["create" + name](radius);
       mesh.radius = radius;
-      canonicalSize = 0.5;
-      ratio = radius / canonicalSize;
-      matrix = new THREE.Matrix4().makeScale(ratio, ratio, ratio);
-      mesh.applyMatrix(matrix);
+      mesh.mu = mksG * mesh.mksMass;
       return mesh;
     }
   };
@@ -92,51 +99,147 @@
   Ship = (function(_super) {
     __extends(Ship, _super);
 
-    function Ship() {
-      var size;
+    function Ship(size) {
       Ship.__super__.constructor.apply(this, arguments);
-      size = KM(0.01);
-      this.geometry = new THREE.BoxGeometry(size, size, size);
-      this.material = new THREE.MeshBasicMaterial({
+      this.mesh = new THREE.Mesh;
+      this.mesh.geometry = new THREE.CylinderGeometry(size * 0.25, size * 0.5, size);
+      this.mesh.material = new THREE.MeshBasicMaterial({
         color: 0x006600
       });
-      this.mass = TON(1);
-      this.mu = G * this.mass;
-      this.orbitCenter = new THREE.Object3D();
+      this.add(this.mesh);
+      this.cameraTarget = new THREE.Object3D;
+      this.add(this.cameraTarget);
+      this.velArrow = this.arrow(new THREE.Vector3(KM(1), 0, 0));
+      this.add(this.velArrow);
     }
 
-    Ship.prototype.orbit = function(planet, altitude) {
-      this.position.x = planet.radius + altitude;
-      this.velocity = Math.sqrt(G * this.mass / this.position.x);
-      this.orbitCenter.position = planet.position;
-      this.orbitCenter.add(this);
-      return planet.parent.add(this.orbitCenter);
+    Ship.prototype.orbit = function(boi, gameAltitude) {
+      var mksDistance, mksOrbitalSpeed;
+      this.boi = boi;
+      this.mksMass = 1000;
+      this.position.y = this.boi.radius + gameAltitude;
+      mksDistance = mksVector(this.position).length();
+      mksOrbitalSpeed = Math.sqrt(this.boi.mu / mksDistance);
+      this.mksVelocity = new THREE.Vector3(mksOrbitalSpeed, 0, 0);
+      this.mksPosition = mksVector(this.position);
+      this.mksAngMom = new THREE.Vector3;
+      return this.referencePosition = this.position.clone();
     };
 
-    Ship.prototype.simulate = function(dt) {
-      var _ref;
-      return _ref = [], this.position = _ref[0], this.velocity = _ref[1], _ref;
+    Ship.prototype.updateEllipse = function() {
+      var orbitRotateAngle, path;
+      this.mksAngMom.crossVectors(this.mksPosition, this.mksVelocity);
+      this.orbitEllipse = new THREE.EllipseCurve(0, 0, this.position.length(), this.position.length(), 0, 2 * Math.PI, false);
+      path = new THREE.CurvePath;
+      path.add(this.orbitEllipse);
+      this.orbitLine = new THREE.Line(path.createPointsGeometry(20000), new THREE.LineBasicMaterial({
+        depthTest: true,
+        color: 0x0000ff,
+        linewidth: 2,
+        fog: true
+      }));
+      orbitRotateAngle = new THREE.Vector3(0, 0, 1).angleTo(this.mksAngMom);
+      this.orbitLine.rotateOnAxis(this.mksVelocity.clone().normalize(), orbitRotateAngle);
+      this.parent.add(this.orbitLine);
+      return console.log(this.orbitLine);
+    };
+
+    Ship.prototype.captureCamera = function(camera) {
+      this.camera = camera;
+      this.cameraTarget.add(camera);
+      camera.position.z = KM(1);
+      camera.target = this.cameraTarget;
+      return camera.control = function(keyboard, renderer) {
+        return (function(_this) {
+          return function() {
+            if (keyboard.pressed("shift")) {
+              if (keyboard.pressed("shift+up")) {
+                _this.position.z = Math.max(_this.position.z / 2.0, M(10));
+              }
+              if (keyboard.pressed("shift+down")) {
+                return _this.position.z = Math.min(_this.position.z * 2, KM(10000));
+              }
+            } else {
+              if (keyboard.pressed("left")) {
+                _this.target.rotation.y -= 0.05;
+              }
+              if (keyboard.pressed("right")) {
+                _this.target.rotation.y += 0.05;
+              }
+              if (keyboard.pressed("up")) {
+                _this.target.rotation.x -= 0.05;
+              }
+              if (keyboard.pressed("down")) {
+                return _this.target.rotation.x += 0.05;
+              }
+            }
+          };
+        })(this);
+      };
+    };
+
+    Ship.prototype.simulate = function() {
+      var clock;
+      clock = new THREE.Clock;
+      clock.start();
+      return (function(_this) {
+        return function() {
+          var count, dt, oldPosition, simulateSeconds, simulateSteps, _ref;
+          if (!_this.g) {
+            _this.g = function(x, v, dt) {
+              var magnitude, r;
+              r = x.clone().normalize().negate();
+              magnitude = mksG * _this.boi.mksMass / (x.length() * x.length());
+              r.multiplyScalar(magnitude);
+              return r;
+            };
+          }
+          count = 0;
+          oldPosition = _this.mksPosition.clone();
+          dt = 0.00001;
+          simulateSeconds = clock.getDelta();
+          simulateSteps = Math.floor(simulateSeconds / dt);
+          while (count < simulateSteps) {
+            THREEx.rk4(_this.mksPosition, _this.mksVelocity, _this.g, dt);
+            ++count;
+          }
+          _this.mksPosition.setGameVector(_this.position);
+          return (_ref = _this.velArrow) != null ? _ref.setDirection(_this.mksVelocity.clone().normalize()) : void 0;
+        };
+      })(this);
     };
 
     Ship.prototype.control = function(keyboard) {
-      this.orbitCenter.rotation.y += 0.001;
-      if (keyboard.pressed("w")) {
-        this.rotation.y -= 0.1;
+      return (function(_this) {
+        return function() {
+          if (keyboard.pressed("w")) {
+            _this.mesh.rotation.y -= 0.05;
+          }
+          if (keyboard.pressed("s")) {
+            _this.mesh.rotation.y += 0.05;
+          }
+          if (keyboard.pressed("d")) {
+            _this.mesh.rotation.z += 0.05;
+          }
+          if (keyboard.pressed("a")) {
+            return _this.mesh.rotation.z -= 0.05;
+          }
+        };
+      })(this);
+    };
+
+    Ship.prototype.arrow = function(vector, color) {
+      var direction;
+      if (color == null) {
+        color = 0xff0000;
       }
-      if (keyboard.pressed("s")) {
-        this.rotation.y += 0.1;
-      }
-      if (keyboard.pressed("d")) {
-        this.rotation.wez += 0.1;
-      }
-      if (keyboard.pressed("a")) {
-        return this.rotation.z -= 0.1;
-      }
+      direction = vector.clone().normalize();
+      return new THREE.ArrowHelper(direction, this.position, vector.length(), color);
     };
 
     return Ship;
 
-  })(THREE.Mesh);
+  })(THREE.Object3D);
 
   window.Planet = Planet;
 
@@ -148,22 +251,27 @@
   window.THREEx = window.THREEx || {};
 
   window.THREEx.rk4 = function(x, v, a, dt) {
-    var a1, a2, a3, a4, v1, v2, v3, v4, vf, x1, x2, x3, x4, xf;
-    x1 = x;
-    v1 = v;
+    var a1, a2, a3, a4, dt2, dt6, v1, v2, v3, v4, x1, x2, x3, x4;
+    dt2 = dt / 2.0;
+    dt6 = dt / 6.0;
+    x1 = x.clone();
+    v1 = v.clone();
     a1 = a(x1, v1, 0);
-    x2 = x + 0.5 * v1 * dt;
-    v2 = v + 0.5 * a1 * dt;
-    a2 = a(x2, v2, dt / 2);
-    x3 = x + 0.5 * v2 * dt;
-    v3 = v + 0.5 * a2 * dt;
-    a3 = a(x3, v3, dt / 2);
-    x4 = x + v3 * dt;
-    v4 = v + a3 * dt;
+    x2 = v1.clone().multiplyScalar(dt2).add(x);
+    v2 = a1.clone().multiplyScalar(dt2).add(v);
+    a2 = a(x2, v2, dt2);
+    x3 = v2.clone().multiplyScalar(dt2).add(x);
+    v3 = a2.clone().multiplyScalar(dt2).add(v);
+    a3 = a(x3, v3, dt2);
+    x4 = v3.clone().multiplyScalar(dt).add(x);
+    v4 = a3.clone().multiplyScalar(dt).add(v);
     a4 = a(x4, v4, dt);
-    xf = x + (dt / 6) * (v1 + 2 * v2 + 2 * v3 + v4);
-    vf = v + (dt / 6) * (a1 + 2 * a2 + 2 * a3 + a4);
-    return [xf, vf];
+    v2.multiplyScalar(2.0);
+    v3.multiplyScalar(2.0);
+    x.add(v1.add(v2).add(v3).add(v4).multiplyScalar(dt6));
+    a2.multiplyScalar(2.0);
+    a3.multiplyScalar(2.0);
+    return v.add(a1.add(a2).add(a3).add(a4).multiplyScalar(dt6));
   };
 
 }).call(this);

@@ -1,18 +1,17 @@
 window.THREEx  = window.THREEx or {}
 
-window.THREEx.rk4 = (x, v, a) ->
+window.THREEx.rk4 = (x, v, a, dt) ->
   # Returns final (position, velocity) array after time dt has passed.
   #        x: initial position
   #        v: initial velocity
   #        a: acceleration function a(x,v,dt) (must be callable)
   #        dt: timestep
 
-  dt = 0.6
-  dt2 = 0.3 # dt/2
-  H = 0.1
+  dt2 = dt/2.0 # dt/2
+  dt6 = dt/6.0  # dt6
 
-  x1 = x
-  v1 = v
+  x1 = x.clone()
+  v1 = v.clone()
   a1 = a(x1, v1, 0)
 
   # x2 = x + 0.5*v1*dt;
@@ -37,9 +36,9 @@ window.THREEx.rk4 = (x, v, a) ->
   # xf = x + (dt/6.0)*(v1 + 2*v2 + 2*v3 + v4);
   v2.multiplyScalar(2.0)
   v3.multiplyScalar(2.0)
-  x.add(v1.add(v2).add(v3).add(v4).multiplyScalar(H))
+  x.add(v1.add(v2).add(v3).add(v4).multiplyScalar(dt6))
 
   # vf = v + (dt/6.0)*(a1 + 2*a2 + 2*a3 + a4);
   a2.multiplyScalar(2.0)
   a3.multiplyScalar(2.0)
-  v.add(a1.add(a2).add(a3).add(a4).multiplyScalar(H))
+  v.add(a1.add(a2).add(a3).add(a4).multiplyScalar(dt6))

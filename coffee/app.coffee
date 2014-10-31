@@ -1,50 +1,65 @@
-window.KM = (kms) -> kms/10.0
-window.TON = (t)-> t
+SCALE = 1
+
+window.KM = (kms) -> M(kms)*1000
+window.M = (mts) -> mts*SCALE
+
+window.mksVector = (gameVector) -> 
+    vector = gameVector.clone().multiplyScalar(1.0/SCALE)
+    vector.setGameVector = (v)->
+        v.copy(@).multiplyScalar(SCALE)
+    return vector
+
 window.LEO = KM(160)
 
 # Basics
-scene = new THREE.Scene()
-camera = new THREE.PerspectiveCamera 45, window.innerWidth/window.innerHeight, KM(0.0001), KM(100000)
-renderer = new THREE.WebGLRenderer antialias: true
+window.scene = new THREE.Scene()
+camera = new THREE.PerspectiveCamera 90, window.innerWidth/window.innerHeight, M(0.001), KM(100000)
+renderer = new THREE.WebGLRenderer antialias: true, logarithmicDepthBuffer: true
 renderer.setSize window.innerWidth, window.innerHeight
 renderer.shadowMapEnabled   = true
-keyboard = new THREEx.KeyboardState()
+# cameraControls = new THREE.OrbitControls camera
+keyboard = new THREEx.KeyboardState
+clock = new THREE.Clock false
+scene.add new THREE.AmbientLight 0x888888
+gameLoop = []
 
-renderStack = []
 
 # Prepare scene
 window.setup = ()->
-    planet = Planet.create('Earth', KM(6371))
-    ship = new Ship()
-    # refShip = new Ship()
+    planet = Planet.create('Earth', KM(6378))
     scene.add planet
-    # scene.add refShip
-    # refShip.orbit planet, LEO+KM(0.100), KM()
+
+    ship = new Ship M(10)
+    scene.add ship
     ship.orbit planet, LEO
-    ship.add camera
-    camera.position.z = KM(0.1)
-    scene.add new THREE.AmbientLight( 0x888888 )
-    renderStack.push ship
+    ship.captureCamera camera
+    ship.updateEllipse()
 
+    # refShip = new Ship M(0.080)
+    # scene.add refShip
+    # refShip.orbit planet, LEO+KM(0.1)
 
-window.render = ()->
-    for f in renderStack
-        if f.control
-            f.control(keyboard)
-        else
-            f()
+    gameLoop.push ship.control(keyboard)
+    # gameLoop.push ship.simulate()
+    gameLoop.push camera.control(keyboard, renderer)
+    # gameLoop.push refShip.simulate()
+    
+    window.ship = ship
 
-    if keyboard.pressed "left"
-        camera.rotation.y += 0.1
-    if keyboard.pressed "right"
-        camera.rotation.y -= 0.1
-    if keyboard.pressed "up"
-        camera.position.z /= 2.0
-    if keyboard.pressed "down"
-        camera.position.z *= 2.0
+window.run = ()->
+    render()
+    animate()
 
-    requestAnimationFrame render
+render = ()->    
     renderer.render scene, camera
 
+animate = ()->
+    # cameraControls.update();
+    for f in gameLoop
+        f()
+    requestAnimationFrame run
+
+
 document.body.appendChild renderer.domElement
+# cameraControls.addEventListener 'change', render
 

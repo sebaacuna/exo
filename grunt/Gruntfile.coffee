@@ -15,7 +15,7 @@ module.exports = (grunt) ->
         separator: ';'
         stripBanners: true
       dist:
-        src: [ "../js/lib/**.js" ]
+        src: [ "../js/lib/**/*.js" ]
         dest: "../js/lib.js"
 
     # Watch relevant source files and perform tasks when they change
@@ -29,7 +29,7 @@ module.exports = (grunt) ->
       #   tasks: [ "sass:app" , "sass:dist"]
 
       libScripts:
-        files: [ "../js/lib/**.js" ]
+        files: [ "../js/lib/**/*.js" ]
         tasks: [ "concat:dist" ]
 
 

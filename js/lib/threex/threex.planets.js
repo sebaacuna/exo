@@ -40,8 +40,8 @@ THREEx.Planets.createVenus	= function(){
 	return mesh	
 }
 
-THREEx.Planets.createEarth	= function(){
-	var geometry	= new THREE.SphereGeometry(0.5, 32, 32)
+THREEx.Planets.createEarth	= function(radius){
+	var geometry	= new THREE.SphereGeometry(radius, 32, 32)
 	var material	= new THREE.MeshPhongMaterial({
 		map		: THREE.ImageUtils.loadTexture(THREEx.Planets.baseURL+'images/earthmap1k.jpg'),
 		bumpMap		: THREE.ImageUtils.loadTexture(THREEx.Planets.baseURL+'images/earthbump1k.jpg'),
@@ -50,6 +50,7 @@ THREEx.Planets.createEarth	= function(){
 		specular	: new THREE.Color('grey'),
 	})
 	var mesh	= new THREE.Mesh(geometry, material)
+	mesh.mksMass = 5.972e24
 	return mesh	
 }
 

@@ -1,119 +1,4 @@
-// THREEx.KeyboardState.js keep the current state of the keyboard.
-// It is possible to query it at any time. No need of an event.
-// This is particularly convenient in loop driven case, like in
-// 3D demos or games.
-//
-// # Usage
-//
-// **Step 1**: Create the object
-//
-// ```var keyboard  = new THREEx.KeyboardState();```
-//
-// **Step 2**: Query the keyboard state
-//
-// This will return true if shift and A are pressed, false otherwise
-//
-// ```keyboard.pressed("shift+A")```
-//
-// **Step 3**: Stop listening to the keyboard
-//
-// ```keyboard.destroy()```
-//
-// NOTE: this library may be nice as standaline. independant from three.js
-// - rename it keyboardForGame
-//
-// # Code
-//
-
-/** @namespace */
-var THREEx  = THREEx        || {};
-
-/**
- * - NOTE: it would be quite easy to push event-driven too
- *   - microevent.js for events handling
- *   - in this._onkeyChange, generate a string from the DOM event
- *   - use this as event name
-*/
-THREEx.KeyboardState    = function()
-{
-    // to store the current state
-    this.keyCodes   = {};
-    this.modifiers  = {};
-    
-    // create callback to bind/unbind keyboard events
-    var self    = this;
-    this._onKeyDown = function(event){ self._onKeyChange(event, true); };
-    this._onKeyUp   = function(event){ self._onKeyChange(event, false);};
-
-    // bind keyEvents
-    document.addEventListener("keydown", this._onKeyDown, false);
-    document.addEventListener("keyup", this._onKeyUp, false);
-}
-
-/**
- * To stop listening of the keyboard events
-*/
-THREEx.KeyboardState.prototype.destroy  = function()
-{
-    // unbind keyEvents
-    document.removeEventListener("keydown", this._onKeyDown, false);
-    document.removeEventListener("keyup", this._onKeyUp, false);
-}
-
-THREEx.KeyboardState.MODIFIERS  = ['shift', 'ctrl', 'alt', 'meta'];
-THREEx.KeyboardState.ALIAS  = {
-    'left'      : 37,
-    'up'        : 38,
-    'right'     : 39,
-    'down'      : 40,
-    'space'     : 32,
-    'pageup'    : 33,
-    'pagedown'  : 34,
-    'tab'       : 9
-};
-
-/**
- * to process the keyboard dom event
-*/
-THREEx.KeyboardState.prototype._onKeyChange = function(event, pressed)
-{
-    // log to debug
-    //console.log("onKeyChange", event, pressed, event.keyCode, event.shiftKey, event.ctrlKey, event.altKey, event.metaKey)
-
-    // update this.keyCodes
-    var keyCode     = event.keyCode;
-    this.keyCodes[keyCode]  = pressed;
-
-    // update this.modifiers
-    this.modifiers['shift']= event.shiftKey;
-    this.modifiers['ctrl']  = event.ctrlKey;
-    this.modifiers['alt']   = event.altKey;
-    this.modifiers['meta']  = event.metaKey;
-}
-
-/**
- * query keyboard state to know if a key is pressed of not
- *
- * @param {String} keyDesc the description of the key. format : modifiers+key e.g shift+A
- * @returns {Boolean} true if the key is pressed, false otherwise
-*/
-THREEx.KeyboardState.prototype.pressed  = function(keyDesc)
-{
-    var keys    = keyDesc.split("+");
-    for(var i = 0; i < keys.length; i++){
-        var key     = keys[i];
-        var pressed;
-        if( THREEx.KeyboardState.MODIFIERS.indexOf( key ) !== -1 ){
-            pressed = this.modifiers[key];
-        }else if( Object.keys(THREEx.KeyboardState.ALIAS).indexOf( key ) != -1 ){
-            pressed = this.keyCodes[ THREEx.KeyboardState.ALIAS[key] ];
-        }else {
-            pressed = this.keyCodes[key.toUpperCase().charCodeAt(0)]
-        }
-        if( !pressed)   return false;
-    };
-    return true;
-};// threejs.org/license
+// threejs.org/license
 'use strict';var THREE={REVISION:"69"};"object"===typeof module&&(module.exports=THREE);void 0===Math.sign&&(Math.sign=function(a){return 0>a?-1:0<a?1:0});THREE.MOUSE={LEFT:0,MIDDLE:1,RIGHT:2};THREE.CullFaceNone=0;THREE.CullFaceBack=1;THREE.CullFaceFront=2;THREE.CullFaceFrontBack=3;THREE.FrontFaceDirectionCW=0;THREE.FrontFaceDirectionCCW=1;THREE.BasicShadowMap=0;THREE.PCFShadowMap=1;THREE.PCFSoftShadowMap=2;THREE.FrontSide=0;THREE.BackSide=1;THREE.DoubleSide=2;THREE.NoShading=0;
 THREE.FlatShading=1;THREE.SmoothShading=2;THREE.NoColors=0;THREE.FaceColors=1;THREE.VertexColors=2;THREE.NoBlending=0;THREE.NormalBlending=1;THREE.AdditiveBlending=2;THREE.SubtractiveBlending=3;THREE.MultiplyBlending=4;THREE.CustomBlending=5;THREE.AddEquation=100;THREE.SubtractEquation=101;THREE.ReverseSubtractEquation=102;THREE.MinEquation=103;THREE.MaxEquation=104;THREE.ZeroFactor=200;THREE.OneFactor=201;THREE.SrcColorFactor=202;THREE.OneMinusSrcColorFactor=203;THREE.SrcAlphaFactor=204;
 THREE.OneMinusSrcAlphaFactor=205;THREE.DstAlphaFactor=206;THREE.OneMinusDstAlphaFactor=207;THREE.DstColorFactor=208;THREE.OneMinusDstColorFactor=209;THREE.SrcAlphaSaturateFactor=210;THREE.MultiplyOperation=0;THREE.MixOperation=1;THREE.AddOperation=2;THREE.UVMapping=function(){};THREE.CubeReflectionMapping=function(){};THREE.CubeRefractionMapping=function(){};THREE.SphericalReflectionMapping=function(){};THREE.SphericalRefractionMapping=function(){};THREE.RepeatWrapping=1E3;
@@ -927,6 +812,786 @@ THREE.MorphBlendMesh.prototype.setAnimationDuration=function(a,b){var c=this.ani
 THREE.MorphBlendMesh.prototype.getAnimationDuration=function(a){var b=-1;if(a=this.animationsMap[a])b=a.duration;return b};THREE.MorphBlendMesh.prototype.playAnimation=function(a){var b=this.animationsMap[a];b?(b.time=0,b.active=!0):console.warn("animation["+a+"] undefined")};THREE.MorphBlendMesh.prototype.stopAnimation=function(a){if(a=this.animationsMap[a])a.active=!1};
 THREE.MorphBlendMesh.prototype.update=function(a){for(var b=0,c=this.animationsList.length;b<c;b++){var d=this.animationsList[b];if(d.active){var e=d.duration/d.length;d.time+=d.direction*a;if(d.mirroredLoop){if(d.time>d.duration||0>d.time)d.direction*=-1,d.time>d.duration&&(d.time=d.duration,d.directionBackwards=!0),0>d.time&&(d.time=0,d.directionBackwards=!1)}else d.time%=d.duration,0>d.time&&(d.time+=d.duration);var f=d.startFrame+THREE.Math.clamp(Math.floor(d.time/e),0,d.length-1),g=d.weight;
 f!==d.currentFrame&&(this.morphTargetInfluences[d.lastFrame]=0,this.morphTargetInfluences[d.currentFrame]=1*g,this.morphTargetInfluences[f]=0,d.lastFrame=d.currentFrame,d.currentFrame=f);e=d.time%e/e;d.directionBackwards&&(e=1-e);this.morphTargetInfluences[d.currentFrame]=e*g;this.morphTargetInfluences[d.lastFrame]=(1-e)*g}}};
+;// THREEx.KeyboardState.js keep the current state of the keyboard.
+// It is possible to query it at any time. No need of an event.
+// This is particularly convenient in loop driven case, like in
+// 3D demos or games.
+//
+// # Usage
+//
+// **Step 1**: Create the object
+//
+// ```var keyboard  = new THREEx.KeyboardState();```
+//
+// **Step 2**: Query the keyboard state
+//
+// This will return true if shift and A are pressed, false otherwise
+//
+// ```keyboard.pressed("shift+A")```
+//
+// **Step 3**: Stop listening to the keyboard
+//
+// ```keyboard.destroy()```
+//
+// NOTE: this library may be nice as standaline. independant from three.js
+// - rename it keyboardForGame
+//
+// # Code
+//
+
+/** @namespace */
+var THREEx  = THREEx        || {};
+
+/**
+ * - NOTE: it would be quite easy to push event-driven too
+ *   - microevent.js for events handling
+ *   - in this._onkeyChange, generate a string from the DOM event
+ *   - use this as event name
+*/
+THREEx.KeyboardState    = function()
+{
+    // to store the current state
+    this.keyCodes   = {};
+    this.modifiers  = {};
+    
+    // create callback to bind/unbind keyboard events
+    var self    = this;
+    this._onKeyDown = function(event){ self._onKeyChange(event, true); };
+    this._onKeyUp   = function(event){ self._onKeyChange(event, false);};
+
+    // bind keyEvents
+    document.addEventListener("keydown", this._onKeyDown, false);
+    document.addEventListener("keyup", this._onKeyUp, false);
+}
+
+/**
+ * To stop listening of the keyboard events
+*/
+THREEx.KeyboardState.prototype.destroy  = function()
+{
+    // unbind keyEvents
+    document.removeEventListener("keydown", this._onKeyDown, false);
+    document.removeEventListener("keyup", this._onKeyUp, false);
+}
+
+THREEx.KeyboardState.MODIFIERS  = ['shift', 'ctrl', 'alt', 'meta'];
+THREEx.KeyboardState.ALIAS  = {
+    'left'      : 37,
+    'up'        : 38,
+    'right'     : 39,
+    'down'      : 40,
+    'space'     : 32,
+    'pageup'    : 33,
+    'pagedown'  : 34,
+    'tab'       : 9
+};
+
+/**
+ * to process the keyboard dom event
+*/
+THREEx.KeyboardState.prototype._onKeyChange = function(event, pressed)
+{
+    // log to debug
+    //console.log("onKeyChange", event, pressed, event.keyCode, event.shiftKey, event.ctrlKey, event.altKey, event.metaKey)
+
+    // update this.keyCodes
+    var keyCode     = event.keyCode;
+    this.keyCodes[keyCode]  = pressed;
+
+    // update this.modifiers
+    this.modifiers['shift']= event.shiftKey;
+    this.modifiers['ctrl']  = event.ctrlKey;
+    this.modifiers['alt']   = event.altKey;
+    this.modifiers['meta']  = event.metaKey;
+}
+
+/**
+ * query keyboard state to know if a key is pressed of not
+ *
+ * @param {String} keyDesc the description of the key. format : modifiers+key e.g shift+A
+ * @returns {Boolean} true if the key is pressed, false otherwise
+*/
+THREEx.KeyboardState.prototype.pressed  = function(keyDesc)
+{
+    var keys    = keyDesc.split("+");
+    for(var i = 0; i < keys.length; i++){
+        var key     = keys[i];
+        var pressed;
+        if( THREEx.KeyboardState.MODIFIERS.indexOf( key ) !== -1 ){
+            pressed = this.modifiers[key];
+        }else if( Object.keys(THREEx.KeyboardState.ALIAS).indexOf( key ) != -1 ){
+            pressed = this.keyCodes[ THREEx.KeyboardState.ALIAS[key] ];
+        }else {
+            pressed = this.keyCodes[key.toUpperCase().charCodeAt(0)]
+        }
+        if( !pressed)   return false;
+    };
+    return true;
+};/*global THREE, console */
+
+// This set of controls performs orbiting, dollying (zooming), and panning. It maintains
+// the "up" direction as +Y, unlike the TrackballControls. Touch on tablet and phones is
+// supported.
+//
+//    Orbit - left mouse / touch: one finger move
+//    Zoom - middle mouse, or mousewheel / touch: two finger spread or squish
+//    Pan - right mouse, or arrow keys / touch: three finter swipe
+//
+// This is a drop-in replacement for (most) TrackballControls used in examples.
+// That is, include this js file and wherever you see:
+//    	controls = new THREE.TrackballControls( camera );
+//      controls.target.z = 150;
+// Simple substitute "OrbitControls" and the control should work as-is.
+
+THREE.OrbitControls = function ( object, domElement ) {
+
+	this.object = object;
+	this.domElement = ( domElement !== undefined ) ? domElement : document;
+
+	// API
+
+	// Set to false to disable this control
+	this.enabled = true;
+
+	// "target" sets the location of focus, where the control orbits around
+	// and where it pans with respect to.
+	this.target = new THREE.Vector3();
+
+	// center is old, deprecated; use "target" instead
+	this.center = this.target;
+
+	// This option actually enables dollying in and out; left as "zoom" for
+	// backwards compatibility
+	this.noZoom = false;
+	this.zoomSpeed = 1.0;
+
+	// Limits to how far you can dolly in and out
+	this.minDistance = 0;
+	this.maxDistance = Infinity;
+
+	// Set to true to disable this control
+	this.noRotate = false;
+	this.rotateSpeed = 1.0;
+
+	// Set to true to disable this control
+	this.noPan = false;
+	this.keyPanSpeed = 7.0;	// pixels moved per arrow key push
+
+	// Set to true to automatically rotate around the target
+	this.autoRotate = false;
+	this.autoRotateSpeed = 2.0; // 30 seconds per round when fps is 60
+
+	// How far you can orbit vertically, upper and lower limits.
+	// Range is 0 to Math.PI radians.
+	this.minPolarAngle = 0; // radians
+	this.maxPolarAngle = Math.PI; // radians
+
+	// How far you can orbit horizontally, upper and lower limits.
+	// If set, must be a sub-interval of the interval [ - Math.PI, Math.PI ].
+	this.minAzimuthAngle = - Infinity; // radians
+	this.maxAzimuthAngle = Infinity; // radians
+
+	// Set to true to disable use of the keys
+	this.noKeys = false;
+
+	// The four arrow keys
+	this.keys = { LEFT: 37, UP: 38, RIGHT: 39, BOTTOM: 40 };
+
+	// Mouse buttons
+	this.mouseButtons = { ORBIT: THREE.MOUSE.LEFT, ZOOM: THREE.MOUSE.MIDDLE, PAN: THREE.MOUSE.RIGHT };
+
+	////////////
+	// internals
+
+	var scope = this;
+
+	var EPS = 0.000001;
+
+	var rotateStart = new THREE.Vector2();
+	var rotateEnd = new THREE.Vector2();
+	var rotateDelta = new THREE.Vector2();
+
+	var panStart = new THREE.Vector2();
+	var panEnd = new THREE.Vector2();
+	var panDelta = new THREE.Vector2();
+	var panOffset = new THREE.Vector3();
+
+	var offset = new THREE.Vector3();
+
+	var dollyStart = new THREE.Vector2();
+	var dollyEnd = new THREE.Vector2();
+	var dollyDelta = new THREE.Vector2();
+
+	var theta;
+	var phi;
+	var phiDelta = 0;
+	var thetaDelta = 0;
+	var scale = 1;
+	var pan = new THREE.Vector3();
+
+	var lastPosition = new THREE.Vector3();
+	var lastQuaternion = new THREE.Quaternion();
+
+	var STATE = { NONE : -1, ROTATE : 0, DOLLY : 1, PAN : 2, TOUCH_ROTATE : 3, TOUCH_DOLLY : 4, TOUCH_PAN : 5 };
+
+	var state = STATE.NONE;
+
+	// for reset
+
+	this.target0 = this.target.clone();
+	this.position0 = this.object.position.clone();
+
+	// so camera.up is the orbit axis
+
+	var quat = new THREE.Quaternion().setFromUnitVectors( object.up, new THREE.Vector3( 0, 1, 0 ) );
+	var quatInverse = quat.clone().inverse();
+
+	// events
+
+	var changeEvent = { type: 'change' };
+	var startEvent = { type: 'start'};
+	var endEvent = { type: 'end'};
+
+	this.rotateLeft = function ( angle ) {
+
+		if ( angle === undefined ) {
+
+			angle = getAutoRotationAngle();
+
+		}
+
+		thetaDelta -= angle;
+
+	};
+
+	this.rotateUp = function ( angle ) {
+
+		if ( angle === undefined ) {
+
+			angle = getAutoRotationAngle();
+
+		}
+
+		phiDelta -= angle;
+
+	};
+
+	// pass in distance in world space to move left
+	this.panLeft = function ( distance ) {
+
+		var te = this.object.matrix.elements;
+
+		// get X column of matrix
+		panOffset.set( te[ 0 ], te[ 1 ], te[ 2 ] );
+		panOffset.multiplyScalar( - distance );
+
+		pan.add( panOffset );
+
+	};
+
+	// pass in distance in world space to move up
+	this.panUp = function ( distance ) {
+
+		var te = this.object.matrix.elements;
+
+		// get Y column of matrix
+		panOffset.set( te[ 4 ], te[ 5 ], te[ 6 ] );
+		panOffset.multiplyScalar( distance );
+
+		pan.add( panOffset );
+
+	};
+
+	// pass in x,y of change desired in pixel space,
+	// right and down are positive
+	this.pan = function ( deltaX, deltaY ) {
+
+		var element = scope.domElement === document ? scope.domElement.body : scope.domElement;
+
+		if ( scope.object.fov !== undefined ) {
+
+			// perspective
+			var position = scope.object.position;
+			var offset = position.clone().sub( scope.target );
+			var targetDistance = offset.length();
+
+			// half of the fov is center to top of screen
+			targetDistance *= Math.tan( ( scope.object.fov / 2 ) * Math.PI / 180.0 );
+
+			// we actually don't use screenWidth, since perspective camera is fixed to screen height
+			scope.panLeft( 2 * deltaX * targetDistance / element.clientHeight );
+			scope.panUp( 2 * deltaY * targetDistance / element.clientHeight );
+
+		} else if ( scope.object.top !== undefined ) {
+
+			// orthographic
+			scope.panLeft( deltaX * (scope.object.right - scope.object.left) / element.clientWidth );
+			scope.panUp( deltaY * (scope.object.top - scope.object.bottom) / element.clientHeight );
+
+		} else {
+
+			// camera neither orthographic or perspective
+			console.warn( 'WARNING: OrbitControls.js encountered an unknown camera type - pan disabled.' );
+
+		}
+
+	};
+
+	this.dollyIn = function ( dollyScale ) {
+
+		if ( dollyScale === undefined ) {
+
+			dollyScale = getZoomScale();
+
+		}
+
+		scale /= dollyScale;
+
+	};
+
+	this.dollyOut = function ( dollyScale ) {
+
+		if ( dollyScale === undefined ) {
+
+			dollyScale = getZoomScale();
+
+		}
+
+		scale *= dollyScale;
+
+	};
+
+	this.update = function () {
+
+		var position = this.object.position;
+
+		offset.copy( position ).sub( this.target );
+
+		// rotate offset to "y-axis-is-up" space
+		offset.applyQuaternion( quat );
+
+		// angle from z-axis around y-axis
+
+		theta = Math.atan2( offset.x, offset.z );
+
+		// angle from y-axis
+
+		phi = Math.atan2( Math.sqrt( offset.x * offset.x + offset.z * offset.z ), offset.y );
+
+		if ( this.autoRotate ) {
+
+			this.rotateLeft( getAutoRotationAngle() );
+
+		}
+
+		theta += thetaDelta;
+		phi += phiDelta;
+
+		// restrict theta to be between desired limits
+		theta = Math.max( this.minAzimuthAngle, Math.min( this.maxAzimuthAngle, theta ) );
+
+		// restrict phi to be between desired limits
+		phi = Math.max( this.minPolarAngle, Math.min( this.maxPolarAngle, phi ) );
+
+		// restrict phi to be betwee EPS and PI-EPS
+		phi = Math.max( EPS, Math.min( Math.PI - EPS, phi ) );
+
+		var radius = offset.length() * scale;
+
+		// restrict radius to be between desired limits
+		radius = Math.max( this.minDistance, Math.min( this.maxDistance, radius ) );
+
+		// move target to panned location
+		this.target.add( pan );
+
+		offset.x = radius * Math.sin( phi ) * Math.sin( theta );
+		offset.y = radius * Math.cos( phi );
+		offset.z = radius * Math.sin( phi ) * Math.cos( theta );
+
+		// rotate offset back to "camera-up-vector-is-up" space
+		offset.applyQuaternion( quatInverse );
+
+		position.copy( this.target ).add( offset );
+
+		this.object.lookAt( this.target );
+
+		thetaDelta = 0;
+		phiDelta = 0;
+		scale = 1;
+		pan.set( 0, 0, 0 );
+
+		// update condition is:
+		// min(camera displacement, camera rotation in radians)^2 > EPS
+		// using small-angle approximation cos(x/2) = 1 - x^2 / 8
+
+		if ( lastPosition.distanceToSquared( this.object.position ) > EPS
+		    || 8 * (1 - lastQuaternion.dot(this.object.quaternion)) > EPS ) {
+
+			this.dispatchEvent( changeEvent );
+
+			lastPosition.copy( this.object.position );
+			lastQuaternion.copy (this.object.quaternion );
+
+		}
+
+	};
+
+
+	this.reset = function () {
+
+		state = STATE.NONE;
+
+		this.target.copy( this.target0 );
+		this.object.position.copy( this.position0 );
+
+		this.update();
+
+	};
+
+	this.getPolarAngle = function () {
+
+		return phi;
+
+	};
+
+	this.getAzimuthalAngle = function () {
+
+		return theta
+
+	};
+
+	function getAutoRotationAngle() {
+
+		return 2 * Math.PI / 60 / 60 * scope.autoRotateSpeed;
+
+	}
+
+	function getZoomScale() {
+
+		return Math.pow( 0.95, scope.zoomSpeed );
+
+	}
+
+	function onMouseDown( event ) {
+
+		if ( scope.enabled === false ) return;
+		event.preventDefault();
+
+		if ( event.button === scope.mouseButtons.ORBIT ) {
+			if ( scope.noRotate === true ) return;
+
+			state = STATE.ROTATE;
+
+			rotateStart.set( event.clientX, event.clientY );
+
+		} else if ( event.button === scope.mouseButtons.ZOOM ) {
+			if ( scope.noZoom === true ) return;
+
+			state = STATE.DOLLY;
+
+			dollyStart.set( event.clientX, event.clientY );
+
+		} else if ( event.button === scope.mouseButtons.PAN ) {
+			if ( scope.noPan === true ) return;
+
+			state = STATE.PAN;
+
+			panStart.set( event.clientX, event.clientY );
+
+		}
+
+		document.addEventListener( 'mousemove', onMouseMove, false );
+		document.addEventListener( 'mouseup', onMouseUp, false );
+		scope.dispatchEvent( startEvent );
+
+	}
+
+	function onMouseMove( event ) {
+
+		if ( scope.enabled === false ) return;
+
+		event.preventDefault();
+
+		var element = scope.domElement === document ? scope.domElement.body : scope.domElement;
+
+		if ( state === STATE.ROTATE ) {
+
+			if ( scope.noRotate === true ) return;
+
+			rotateEnd.set( event.clientX, event.clientY );
+			rotateDelta.subVectors( rotateEnd, rotateStart );
+
+			// rotating across whole screen goes 360 degrees around
+			scope.rotateLeft( 2 * Math.PI * rotateDelta.x / element.clientWidth * scope.rotateSpeed );
+
+			// rotating up and down along whole screen attempts to go 360, but limited to 180
+			scope.rotateUp( 2 * Math.PI * rotateDelta.y / element.clientHeight * scope.rotateSpeed );
+
+			rotateStart.copy( rotateEnd );
+
+		} else if ( state === STATE.DOLLY ) {
+
+			if ( scope.noZoom === true ) return;
+
+			dollyEnd.set( event.clientX, event.clientY );
+			dollyDelta.subVectors( dollyEnd, dollyStart );
+
+			if ( dollyDelta.y > 0 ) {
+
+				scope.dollyIn();
+
+			} else {
+
+				scope.dollyOut();
+
+			}
+
+			dollyStart.copy( dollyEnd );
+
+		} else if ( state === STATE.PAN ) {
+
+			if ( scope.noPan === true ) return;
+
+			panEnd.set( event.clientX, event.clientY );
+			panDelta.subVectors( panEnd, panStart );
+
+			scope.pan( panDelta.x, panDelta.y );
+
+			panStart.copy( panEnd );
+
+		}
+
+		scope.update();
+
+	}
+
+	function onMouseUp( /* event */ ) {
+
+		if ( scope.enabled === false ) return;
+
+		document.removeEventListener( 'mousemove', onMouseMove, false );
+		document.removeEventListener( 'mouseup', onMouseUp, false );
+		scope.dispatchEvent( endEvent );
+		state = STATE.NONE;
+
+	}
+
+	function onMouseWheel( event ) {
+
+		if ( scope.enabled === false || scope.noZoom === true ) return;
+
+		event.preventDefault();
+		event.stopPropagation();
+
+		var delta = 0;
+
+		if ( event.wheelDelta !== undefined ) { // WebKit / Opera / Explorer 9
+
+			delta = event.wheelDelta;
+
+		} else if ( event.detail !== undefined ) { // Firefox
+
+			delta = - event.detail;
+
+		}
+
+		if ( delta > 0 ) {
+
+			scope.dollyOut();
+
+		} else {
+
+			scope.dollyIn();
+
+		}
+
+		scope.update();
+		scope.dispatchEvent( startEvent );
+		scope.dispatchEvent( endEvent );
+
+	}
+
+	function onKeyDown( event ) {
+
+		if ( scope.enabled === false || scope.noKeys === true || scope.noPan === true ) return;
+
+		switch ( event.keyCode ) {
+
+			case scope.keys.UP:
+				scope.pan( 0, scope.keyPanSpeed );
+				scope.update();
+				break;
+
+			case scope.keys.BOTTOM:
+				scope.pan( 0, - scope.keyPanSpeed );
+				scope.update();
+				break;
+
+			case scope.keys.LEFT:
+				scope.pan( scope.keyPanSpeed, 0 );
+				scope.update();
+				break;
+
+			case scope.keys.RIGHT:
+				scope.pan( - scope.keyPanSpeed, 0 );
+				scope.update();
+				break;
+
+		}
+
+	}
+
+	function touchstart( event ) {
+
+		if ( scope.enabled === false ) return;
+
+		switch ( event.touches.length ) {
+
+			case 1:	// one-fingered touch: rotate
+
+				if ( scope.noRotate === true ) return;
+
+				state = STATE.TOUCH_ROTATE;
+
+				rotateStart.set( event.touches[ 0 ].pageX, event.touches[ 0 ].pageY );
+				break;
+
+			case 2:	// two-fingered touch: dolly
+
+				if ( scope.noZoom === true ) return;
+
+				state = STATE.TOUCH_DOLLY;
+
+				var dx = event.touches[ 0 ].pageX - event.touches[ 1 ].pageX;
+				var dy = event.touches[ 0 ].pageY - event.touches[ 1 ].pageY;
+				var distance = Math.sqrt( dx * dx + dy * dy );
+				dollyStart.set( 0, distance );
+				break;
+
+			case 3: // three-fingered touch: pan
+
+				if ( scope.noPan === true ) return;
+
+				state = STATE.TOUCH_PAN;
+
+				panStart.set( event.touches[ 0 ].pageX, event.touches[ 0 ].pageY );
+				break;
+
+			default:
+
+				state = STATE.NONE;
+
+		}
+
+		scope.dispatchEvent( startEvent );
+
+	}
+
+	function touchmove( event ) {
+
+		if ( scope.enabled === false ) return;
+
+		event.preventDefault();
+		event.stopPropagation();
+
+		var element = scope.domElement === document ? scope.domElement.body : scope.domElement;
+
+		switch ( event.touches.length ) {
+
+			case 1: // one-fingered touch: rotate
+
+				if ( scope.noRotate === true ) return;
+				if ( state !== STATE.TOUCH_ROTATE ) return;
+
+				rotateEnd.set( event.touches[ 0 ].pageX, event.touches[ 0 ].pageY );
+				rotateDelta.subVectors( rotateEnd, rotateStart );
+
+				// rotating across whole screen goes 360 degrees around
+				scope.rotateLeft( 2 * Math.PI * rotateDelta.x / element.clientWidth * scope.rotateSpeed );
+				// rotating up and down along whole screen attempts to go 360, but limited to 180
+				scope.rotateUp( 2 * Math.PI * rotateDelta.y / element.clientHeight * scope.rotateSpeed );
+
+				rotateStart.copy( rotateEnd );
+
+				scope.update();
+				break;
+
+			case 2: // two-fingered touch: dolly
+
+				if ( scope.noZoom === true ) return;
+				if ( state !== STATE.TOUCH_DOLLY ) return;
+
+				var dx = event.touches[ 0 ].pageX - event.touches[ 1 ].pageX;
+				var dy = event.touches[ 0 ].pageY - event.touches[ 1 ].pageY;
+				var distance = Math.sqrt( dx * dx + dy * dy );
+
+				dollyEnd.set( 0, distance );
+				dollyDelta.subVectors( dollyEnd, dollyStart );
+
+				if ( dollyDelta.y > 0 ) {
+
+					scope.dollyOut();
+
+				} else {
+
+					scope.dollyIn();
+
+				}
+
+				dollyStart.copy( dollyEnd );
+
+				scope.update();
+				break;
+
+			case 3: // three-fingered touch: pan
+
+				if ( scope.noPan === true ) return;
+				if ( state !== STATE.TOUCH_PAN ) return;
+
+				panEnd.set( event.touches[ 0 ].pageX, event.touches[ 0 ].pageY );
+				panDelta.subVectors( panEnd, panStart );
+
+				scope.pan( panDelta.x, panDelta.y );
+
+				panStart.copy( panEnd );
+
+				scope.update();
+				break;
+
+			default:
+
+				state = STATE.NONE;
+
+		}
+
+	}
+
+	function touchend( /* event */ ) {
+
+		if ( scope.enabled === false ) return;
+
+		scope.dispatchEvent( endEvent );
+		state = STATE.NONE;
+
+	}
+
+	this.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); }, false );
+	this.domElement.addEventListener( 'mousedown', onMouseDown, false );
+	this.domElement.addEventListener( 'mousewheel', onMouseWheel, false );
+	this.domElement.addEventListener( 'DOMMouseScroll', onMouseWheel, false ); // firefox
+
+	this.domElement.addEventListener( 'touchstart', touchstart, false );
+	this.domElement.addEventListener( 'touchend', touchend, false );
+	this.domElement.addEventListener( 'touchmove', touchmove, false );
+
+	window.addEventListener( 'keydown', onKeyDown, false );
+
+	// force an update at start
+	this.update();
+
+};
+
+THREE.OrbitControls.prototype = Object.create( THREE.EventDispatcher.prototype );
 ;var THREEx	= THREEx || {};
 
 /**
@@ -1074,8 +1739,8 @@ THREEx.Planets.createVenus	= function(){
 	return mesh	
 }
 
-THREEx.Planets.createEarth	= function(){
-	var geometry	= new THREE.SphereGeometry(0.5, 32, 32)
+THREEx.Planets.createEarth	= function(radius){
+	var geometry	= new THREE.SphereGeometry(radius, 32, 32)
 	var material	= new THREE.MeshPhongMaterial({
 		map		: THREE.ImageUtils.loadTexture(THREEx.Planets.baseURL+'images/earthmap1k.jpg'),
 		bumpMap		: THREE.ImageUtils.loadTexture(THREEx.Planets.baseURL+'images/earthbump1k.jpg'),
@@ -1084,6 +1749,7 @@ THREEx.Planets.createEarth	= function(){
 		specular	: new THREE.Color('grey'),
 	})
 	var mesh	= new THREE.Mesh(geometry, material)
+	mesh.mksMass = 5.972e24
 	return mesh	
 }
 
