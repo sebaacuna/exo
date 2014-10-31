@@ -1,0 +1,11 @@
+{
+  "name": "staticfile-basics",
+  "version": "0.0.0",
+  "description": "Basics to use grunt as staticfile manager for Django projects",
+  "dependencies": {
+    "grunt-contrib-coffee": "^0.10.1",
+    "grunt": "^0.4.4",
+    "grunt-contrib-watch": "^0.6.1",
+    "grunt-contrib-concat": "^0.5.0"
+  }
+}
