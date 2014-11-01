@@ -44,22 +44,17 @@
   gameLoop = [];
 
   window.setup = function() {
-    var planet, refShip, ship;
+    var planet, ship;
     planet = Planet.create('Earth', KM(6378));
     scene.add(planet);
     ship = new Ship(M(10));
     scene.add(ship);
     ship.orbit(planet, LEO);
     ship.captureCamera(camera);
-    refShip = new Ship(M(80));
-    scene.add(refShip);
-    refShip.orbit(planet, LEO + KM(10));
     gameLoop.push(ship.control(keyboard));
     gameLoop.push(ship.simulate());
     gameLoop.push(ship.track(camera));
     gameLoop.push(camera.control(keyboard, renderer));
-    gameLoop.push(refShip.simulate());
-    gameLoop.push(refShip.track(camera));
     return window.ship = ship;
   };
 
@@ -86,11 +81,13 @@
 }).call(this);
 
 (function() {
-  var Planet, Ship, mksG,
+  var NULLVECTOR, Planet, Ship, mksG,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   mksG = 6.67384e-11;
+
+  NULLVECTOR = new THREE.Vector3;
 
   Planet = {
     create: function(name, radius) {
@@ -112,6 +109,7 @@
       this.mesh.material = new THREE.MeshBasicMaterial({
         color: 0x006600
       });
+      this.mesh.matrixAutoUpdate = true;
       this.add(this.mesh);
       this.mesh.rollAxis = this.mesh.up;
       this.mesh.yawAxis = new THREE.Vector3(1, 0, 0);
@@ -123,6 +121,11 @@
       this.add(this.cameraTarget);
       this.velArrow = this.arrow(new THREE.Vector3(KM(1), 0, 0));
       this.add(this.velArrow);
+      this.accelArrow = this.arrow(new THREE.Vector3(1, 0, 0));
+      this.add(this.accelArrow);
+      this.thrustArrow = this.arrow(this.mesh.rollAxis, 0xffffff);
+      this.add(this.thrustArrow);
+      this.thrust = 0;
       this.navCage = new THREE.Mesh;
       this.navCage.geometry = new THREE.CubeGeometry(KM(10), KM(10), KM(10));
       this.navCage.material = new THREE.MeshBasicMaterial({
@@ -130,7 +133,17 @@
         wireframe: true
       });
       this.add(this.navCage);
+      this.consoleElems = {};
     }
+
+    Ship.prototype.console = function(key, value) {
+      if (!this.consoleElems[key]) {
+        this.consoleElems[key] = document.getElementById("console-" + key) || -1;
+      }
+      if (this.consoleElems[key] !== -1) {
+        return this.consoleElems[key].innerHTML = value;
+      }
+    };
 
     Ship.prototype.orbit = function(boi, gameAltitude) {
       var alignAxis, mksDistance, mksOrbitalSpeed;
@@ -164,14 +177,13 @@
       }));
       orbitRotateAngle = new THREE.Vector3(0, 0, 1).angleTo(this.mksAngMom);
       this.orbitLine.rotateOnAxis(this.mksVelocity.clone().normalize(), orbitRotateAngle);
-      this.parent.add(this.orbitLine);
-      return console.log(this.orbitLine);
+      return this.parent.add(this.orbitLine);
     };
 
     Ship.prototype.captureCamera = function(camera) {
       this.camera = camera;
       this.cameraTarget.add(camera);
-      camera.position.z = KM(1);
+      camera.position.z = KM(0.1);
       camera.target = this.cameraTarget;
       return camera.control = function(keyboard, renderer) {
         return (function(_this) {
@@ -181,7 +193,7 @@
                 _this.position.z = Math.max(_this.position.z / 2.0, M(10));
               }
               if (keyboard.pressed("shift+down")) {
-                return _this.position.z = Math.min(_this.position.z * 2, KM(10000));
+                return _this.position.z = Math.min(_this.position.z * 2, KM(100000));
               }
             } else {
               if (keyboard.pressed("left")) {
@@ -208,27 +220,37 @@
       clock.start();
       return (function(_this) {
         return function() {
-          var count, dt, oldPosition, simulateSeconds, simulateSteps, _ref;
-          if (!_this.g) {
-            _this.g = function(x, v, dt) {
+          var count, dt, oldPosition, oldVel, simulateSeconds, simulateSteps, _ref, _ref1, _ref2;
+          if (!_this.a) {
+            _this.a = function(x, v, dt) {
               var magnitude, r;
               r = x.clone().normalize().negate();
               magnitude = mksG * _this.boi.mksMass / (x.length() * x.length());
               r.multiplyScalar(magnitude);
-              return r;
+              return r.add(_this.thrustCalc(x, v, dt));
             };
           }
           count = 0;
           oldPosition = _this.mksPosition.clone();
+          oldVel = _this.mksVelocity.clone();
           dt = 0.00001;
           simulateSeconds = clock.getDelta();
           simulateSteps = Math.floor(simulateSeconds / dt);
           while (count < simulateSteps) {
-            THREEx.rk4(_this.mksPosition, _this.mksVelocity, _this.g, dt);
+            THREEx.rk4(_this.mksPosition, _this.mksVelocity, _this.a, dt);
             ++count;
           }
           _this.mksPosition.setGameVector(_this.position);
-          return (_ref = _this.velArrow) != null ? _ref.setDirection(_this.mksVelocity.clone().normalize()) : void 0;
+          if ((_ref = _this.velArrow) != null) {
+            _ref.setDirection(_this.mksVelocity.clone().normalize());
+          }
+          oldVel.sub(_this.mksVelocity);
+          _this.console('velocity', _this.mksVelocity.length());
+          _this.console('acceleration', oldVel.length());
+          if ((_ref1 = _this.accelArrow) != null) {
+            _ref1.setLength(oldVel.length() * 100);
+          }
+          return (_ref2 = _this.accelArrow) != null ? _ref2.setDirection(oldVel.negate().normalize()) : void 0;
         };
       })(this);
     };
@@ -252,7 +274,14 @@
             _this.mesh.rotateOnAxis(_this.mesh.rollAxis, 0.05);
           }
           if (keyboard.pressed("e")) {
-            return _this.mesh.rotateOnAxis(_this.mesh.rollAxis, -0.05);
+            _this.mesh.rotateOnAxis(_this.mesh.rollAxis, -0.05);
+          }
+          if (keyboard.pressed("space")) {
+            _this.thrust = 1;
+            return _this.thrustArrow.visible = true;
+          } else {
+            _this.thrust = 0;
+            return _this.thrustArrow.visible = false;
           }
         };
       })(this);
@@ -268,9 +297,9 @@
           _this.orbitLine.visible = far;
           _this.navCage.visible = far;
           if (far) {
-            return _this.velArrow.setLength(KM(50));
+            return _this.velArrow.setLength(_this.mksVelocity.length());
           } else {
-            return _this.velArrow.setLength(KM(0.5));
+            return _this.velArrow.setLength(_this.mksVelocity.length());
           }
         };
       })(this);
@@ -283,6 +312,22 @@
       }
       direction = vector.clone().normalize();
       return new THREE.ArrowHelper(direction, this.position, vector.length(), color);
+    };
+
+    Ship.prototype.thrustCalc = function(x, v, dt) {
+      var F, thrustVector;
+      if (this.thrust) {
+        F = 2000;
+        thrustVector = this.mesh.rollAxis.clone();
+        thrustVector.normalize();
+        thrustVector.applyMatrix4(this.mesh.matrix);
+        this.thrustArrow.setDirection(thrustVector);
+        this.thrustArrow.setLength(KM(1));
+        thrustVector.multiplyScalar(F / this.mksMass);
+        return thrustVector;
+      } else {
+        return NULLVECTOR;
+      }
     };
 
     return Ship;

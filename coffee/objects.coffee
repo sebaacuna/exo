@@ -1,4 +1,5 @@
 mksG = 6.67384e-11 #(m3 kg-1 s-2)
+NULLVECTOR = new THREE.Vector3
 
 Planet = 
     create: (name, radius)->
@@ -13,6 +14,7 @@ class Ship extends THREE.Object3D
         @mesh = new THREE.Mesh
         @mesh.geometry = new THREE.CylinderGeometry size*0.25, size*0.5, size
         @mesh.material = new THREE.MeshBasicMaterial color: 0x006600
+        @mesh.matrixAutoUpdate = true
         @add @mesh
 
         @mesh.rollAxis = @mesh.up
@@ -27,10 +29,25 @@ class Ship extends THREE.Object3D
         @velArrow = @arrow new THREE.Vector3(KM(1),0,0)
         @add @velArrow
 
+        @accelArrow = @arrow new THREE.Vector3 1,0,0
+        @add @accelArrow
+
+        @thrustArrow = @arrow @mesh.rollAxis, 0xffffff
+        @add @thrustArrow
+        @thrust = 0
+
         @navCage = new THREE.Mesh
         @navCage.geometry = new THREE.CubeGeometry KM(10), KM(10), KM(10)
         @navCage.material = new THREE.MeshBasicMaterial color:0xff0000, wireframe: true
         @add @navCage
+
+        @consoleElems = {}
+
+    console: (key, value)->
+        if not @consoleElems[key]
+            @consoleElems[key] = document.getElementById("console-#{key}") or -1
+        if @consoleElems[key] != -1
+            @consoleElems[key].innerHTML = value
 
     orbit: (@boi, gameAltitude)->
         @mksMass = 1000
@@ -65,11 +82,10 @@ class Ship extends THREE.Object3D
         orbitRotateAngle = new THREE.Vector3(0, 0, 1).angleTo @mksAngMom
         @orbitLine.rotateOnAxis @mksVelocity.clone().normalize(), orbitRotateAngle 
         @parent.add @orbitLine
-        console.log @orbitLine
 
     captureCamera: (@camera)->
         @cameraTarget.add camera
-        camera.position.z = KM(1)
+        camera.position.z = KM(0.1)
         camera.target = @cameraTarget
         camera.control = (keyboard, renderer)->
             ()=>
@@ -77,44 +93,46 @@ class Ship extends THREE.Object3D
                     if keyboard.pressed "shift+up"
                         @position.z = Math.max(@position.z/2.0, M(10))
                     if keyboard.pressed "shift+down"
-                        @position.z = Math.min(@position.z*2, KM(10000))
+                        @position.z = Math.min(@position.z*2, KM(100000))
                 else
                     if keyboard.pressed "left"
                         @target.rotation.y -= 0.05
-
                     if keyboard.pressed "right"
                         @target.rotation.y += 0.05
-
                     if keyboard.pressed "up"
                         @target.rotation.x -= 0.05
-                    
-
                     if keyboard.pressed "down"
                         @target.rotation.x += 0.05
-
-
 
     simulate: ()->
         clock = new THREE.Clock
         clock.start()
         ()=>
-            if not @g
-                @g = (x,v, dt)=>
+            if not @a
+                @a = (x,v, dt)=> #gravitation
                     r = x.clone().normalize().negate()
                     magnitude = mksG*@boi.mksMass/(x.length()*x.length())
                     r.multiplyScalar magnitude
-                    return r
-            
+                    return r.add @thrustCalc(x,v,dt)
+
             count = 0
             oldPosition = @mksPosition.clone()
+            oldVel = @mksVelocity.clone()
             dt = 0.00001
             simulateSeconds = clock.getDelta()
             simulateSteps = Math.floor simulateSeconds/dt
             while count < simulateSteps
-                THREEx.rk4 @mksPosition, @mksVelocity, @g, dt
+                THREEx.rk4 @mksPosition, @mksVelocity, @a, dt
                 ++count
+            
             @mksPosition.setGameVector @position
             @velArrow?.setDirection @mksVelocity.clone().normalize()
+            oldVel.sub(@mksVelocity)
+            @console 'velocity',  @mksVelocity.length()
+            @console 'acceleration',  oldVel.length()
+            @accelArrow?.setLength oldVel.length()*100
+            @accelArrow?.setDirection oldVel.negate().normalize()
+
 
             # console.log @position.angleTo(@referencePosition)/clock.elapsedTime
             # if @mksPosition.length() - oldPosition.length() > 0.1
@@ -134,6 +152,12 @@ class Ship extends THREE.Object3D
                 @mesh.rotateOnAxis @mesh.rollAxis, 0.05
             if keyboard.pressed("e")
                 @mesh.rotateOnAxis @mesh.rollAxis, -0.05
+            if keyboard.pressed "space"
+                @thrust = 1
+                @thrustArrow.visible = true
+            else
+                @thrust = 0
+                @thrustArrow.visible = false
 
     track: (camera)->
         ()=>
@@ -143,17 +167,33 @@ class Ship extends THREE.Object3D
             @orbitLine.visible = far
             @navCage.visible = far
             if far
-                @velArrow.setLength KM(50)
+                @velArrow.setLength @mksVelocity.length()
             else
-                @velArrow.setLength KM(0.5)
-
+                @velArrow.setLength @mksVelocity.length()
 
     arrow: (vector, color=0xff0000)->
         direction = vector.clone().normalize()
         new THREE.ArrowHelper direction, @position, vector.length(), color
         
-        
-        
+    thrustCalc: (x,v,dt)->
+        # if not @thrustMatrix
+        #     @thrustMatrix = new THREE.Matrix4
+        # @thrustMatrix.getInverse @mesh.matrix
+
+        if @thrust
+            F = 2000 #Thrust [N]
+            # @mesh.updateMatrix()
+            thrustVector = @mesh.rollAxis.clone()
+            thrustVector.normalize()
+            thrustVector.applyMatrix4 @mesh.matrix
+
+            @thrustArrow.setDirection thrustVector
+            @thrustArrow.setLength KM(1)
+
+            thrustVector.multiplyScalar F/@mksMass
+            return thrustVector
+        else
+            return NULLVECTOR
 
 window.Planet = Planet
 window.Ship = Ship

@@ -34,17 +34,17 @@ window.setup = ()->
     ship.orbit planet, LEO
     ship.captureCamera camera
 
-    refShip = new Ship M(80)
-    scene.add refShip
-    refShip.orbit planet, LEO+KM(10)
-
     gameLoop.push ship.control(keyboard)
     gameLoop.push ship.simulate()
     gameLoop.push ship.track(camera)
     gameLoop.push camera.control(keyboard, renderer)
 
-    gameLoop.push refShip.simulate()
-    gameLoop.push refShip.track(camera)
+    # refShip = new Ship M(80)
+    # scene.add refShip
+    # refShip.orbit planet, LEO+KM(10)
+
+    # gameLoop.push refShip.simulate()
+    # gameLoop.push refShip.track(camera)
     
     window.ship = ship
 
@@ -63,5 +63,3 @@ animate = ()->
 
 
 document.body.appendChild renderer.domElement
-# cameraControls.addEventListener 'change', render
-
