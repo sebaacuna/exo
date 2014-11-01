@@ -13,7 +13,7 @@ window.LEO = KM(160)
 
 # Basics
 window.scene = new THREE.Scene()
-camera = new THREE.PerspectiveCamera 90, window.innerWidth/window.innerHeight, M(0.001), KM(100000)
+camera = new THREE.PerspectiveCamera 90, window.innerWidth/window.innerHeight, M(1), KM(100000)
 renderer = new THREE.WebGLRenderer antialias: true, logarithmicDepthBuffer: true
 renderer.setSize window.innerWidth, window.innerHeight
 renderer.shadowMapEnabled   = true
@@ -33,16 +33,18 @@ window.setup = ()->
     scene.add ship
     ship.orbit planet, LEO
     ship.captureCamera camera
-    ship.updateEllipse()
 
-    # refShip = new Ship M(0.080)
-    # scene.add refShip
-    # refShip.orbit planet, LEO+KM(0.1)
+    refShip = new Ship M(80)
+    scene.add refShip
+    refShip.orbit planet, LEO+KM(10)
 
     gameLoop.push ship.control(keyboard)
-    # gameLoop.push ship.simulate()
+    gameLoop.push ship.simulate()
+    gameLoop.push ship.track(camera)
     gameLoop.push camera.control(keyboard, renderer)
-    # gameLoop.push refShip.simulate()
+
+    gameLoop.push refShip.simulate()
+    gameLoop.push refShip.track(camera)
     
     window.ship = ship
 

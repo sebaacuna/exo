@@ -24,7 +24,7 @@
 
   window.scene = new THREE.Scene();
 
-  camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, M(0.001), KM(100000));
+  camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, M(1), KM(100000));
 
   renderer = new THREE.WebGLRenderer({
     antialias: true,
@@ -44,16 +44,22 @@
   gameLoop = [];
 
   window.setup = function() {
-    var planet, ship;
+    var planet, refShip, ship;
     planet = Planet.create('Earth', KM(6378));
     scene.add(planet);
     ship = new Ship(M(10));
     scene.add(ship);
     ship.orbit(planet, LEO);
     ship.captureCamera(camera);
-    ship.updateEllipse();
+    refShip = new Ship(M(80));
+    scene.add(refShip);
+    refShip.orbit(planet, LEO + KM(10));
     gameLoop.push(ship.control(keyboard));
+    gameLoop.push(ship.simulate());
+    gameLoop.push(ship.track(camera));
     gameLoop.push(camera.control(keyboard, renderer));
+    gameLoop.push(refShip.simulate());
+    gameLoop.push(refShip.track(camera));
     return window.ship = ship;
   };
 
@@ -107,14 +113,27 @@
         color: 0x006600
       });
       this.add(this.mesh);
+      this.mesh.rollAxis = this.mesh.up;
+      this.mesh.yawAxis = new THREE.Vector3(1, 0, 0);
+      if (0 === this.mesh.yawAxis.angleTo(this.mesh.rollAxis)) {
+        this.mesh.yawAxis = new THREE.Vector3(0, 0, 1);
+      }
+      this.mesh.pitchAxis = (new THREE.Vector3).crossVectors(this.mesh.yawAxis, this.mesh.rollAxis);
       this.cameraTarget = new THREE.Object3D;
       this.add(this.cameraTarget);
       this.velArrow = this.arrow(new THREE.Vector3(KM(1), 0, 0));
       this.add(this.velArrow);
+      this.navCage = new THREE.Mesh;
+      this.navCage.geometry = new THREE.CubeGeometry(KM(10), KM(10), KM(10));
+      this.navCage.material = new THREE.MeshBasicMaterial({
+        color: 0xff0000,
+        wireframe: true
+      });
+      this.add(this.navCage);
     }
 
     Ship.prototype.orbit = function(boi, gameAltitude) {
-      var mksDistance, mksOrbitalSpeed;
+      var alignAxis, mksDistance, mksOrbitalSpeed;
       this.boi = boi;
       this.mksMass = 1000;
       this.position.y = this.boi.radius + gameAltitude;
@@ -123,15 +142,20 @@
       this.mksVelocity = new THREE.Vector3(mksOrbitalSpeed, 0, 0);
       this.mksPosition = mksVector(this.position);
       this.mksAngMom = new THREE.Vector3;
-      return this.referencePosition = this.position.clone();
+      this.referencePosition = this.position.clone();
+      alignAxis = new THREE.Vector3;
+      alignAxis.crossVectors(this.mesh.up, this.mksVelocity);
+      alignAxis.normalize();
+      this.mesh.rotateOnAxis(alignAxis, this.mesh.up.angleTo(this.mksVelocity));
+      return this.updateEllipse();
     };
 
     Ship.prototype.updateEllipse = function() {
-      var orbitRotateAngle, path;
+      var ellipse, orbitRotateAngle, path;
       this.mksAngMom.crossVectors(this.mksPosition, this.mksVelocity);
-      this.orbitEllipse = new THREE.EllipseCurve(0, 0, this.position.length(), this.position.length(), 0, 2 * Math.PI, false);
+      ellipse = new THREE.EllipseCurve(0, 0, this.position.length(), this.position.length(), 0, 2 * Math.PI, false);
       path = new THREE.CurvePath;
-      path.add(this.orbitEllipse);
+      path.add(ellipse);
       this.orbitLine = new THREE.Line(path.createPointsGeometry(20000), new THREE.LineBasicMaterial({
         depthTest: true,
         color: 0x0000ff,
@@ -213,16 +237,40 @@
       return (function(_this) {
         return function() {
           if (keyboard.pressed("w")) {
-            _this.mesh.rotation.y -= 0.05;
+            _this.mesh.rotateOnAxis(_this.mesh.pitchAxis, -0.05);
           }
           if (keyboard.pressed("s")) {
-            _this.mesh.rotation.y += 0.05;
+            _this.mesh.rotateOnAxis(_this.mesh.pitchAxis, 0.05);
           }
           if (keyboard.pressed("d")) {
-            _this.mesh.rotation.z += 0.05;
+            _this.mesh.rotateOnAxis(_this.mesh.yawAxis, -0.05);
           }
           if (keyboard.pressed("a")) {
-            return _this.mesh.rotation.z -= 0.05;
+            _this.mesh.rotateOnAxis(_this.mesh.yawAxis, 0.05);
+          }
+          if (keyboard.pressed("q")) {
+            _this.mesh.rotateOnAxis(_this.mesh.rollAxis, 0.05);
+          }
+          if (keyboard.pressed("e")) {
+            return _this.mesh.rotateOnAxis(_this.mesh.rollAxis, -0.05);
+          }
+        };
+      })(this);
+    };
+
+    Ship.prototype.track = function(camera) {
+      return (function(_this) {
+        return function() {
+          var far, localPos;
+          localPos = camera.position.clone();
+          camera.localToWorld(localPos);
+          far = localPos.distanceTo(_this.position) > KM(10);
+          _this.orbitLine.visible = far;
+          _this.navCage.visible = far;
+          if (far) {
+            return _this.velArrow.setLength(KM(50));
+          } else {
+            return _this.velArrow.setLength(KM(0.5));
           }
         };
       })(this);

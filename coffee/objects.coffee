@@ -15,11 +15,22 @@ class Ship extends THREE.Object3D
         @mesh.material = new THREE.MeshBasicMaterial color: 0x006600
         @add @mesh
 
+        @mesh.rollAxis = @mesh.up
+        @mesh.yawAxis = new THREE.Vector3 1,0,0
+        if 0== @mesh.yawAxis.angleTo @mesh.rollAxis
+            @mesh.yawAxis = new THREE.Vector3 0,0,1
+        @mesh.pitchAxis = (new THREE.Vector3).crossVectors @mesh.yawAxis, @mesh.rollAxis
+
         @cameraTarget = new THREE.Object3D
         @add @cameraTarget
         
         @velArrow = @arrow new THREE.Vector3(KM(1),0,0)
         @add @velArrow
+
+        @navCage = new THREE.Mesh
+        @navCage.geometry = new THREE.CubeGeometry KM(10), KM(10), KM(10)
+        @navCage.material = new THREE.MeshBasicMaterial color:0xff0000, wireframe: true
+        @add @navCage
 
     orbit: (@boi, gameAltitude)->
         @mksMass = 1000
@@ -30,6 +41,12 @@ class Ship extends THREE.Object3D
         @mksPosition = mksVector(@position)
         @mksAngMom = new THREE.Vector3
         @referencePosition = @position.clone()
+        
+        alignAxis = new THREE.Vector3
+        alignAxis.crossVectors(@mesh.up, @mksVelocity)
+        alignAxis.normalize()
+        @mesh.rotateOnAxis alignAxis, @mesh.up.angleTo(@mksVelocity)
+        @updateEllipse()
 
     updateEllipse: ()->
         @mksAngMom.crossVectors @mksPosition, @mksVelocity
@@ -40,9 +57,9 @@ class Ship extends THREE.Object3D
         # semiMajor = 0.5*@boi.mu/orbitalEnergy
         # semiMinor = @mksAngMom.length()*Math.sqrt(0.5/orbitalEnergy)
         # @orbitEllipse = new THREE.EllipseCurve 0, 0, semiMajor, semiMinor
-        @orbitEllipse = new THREE.EllipseCurve 0, 0, @position.length(), @position.length(), 0, 2*Math.PI, false
+        ellipse = new THREE.EllipseCurve 0, 0, @position.length(), @position.length(), 0, 2*Math.PI, false
         path = new THREE.CurvePath 
-        path.add @orbitEllipse
+        path.add ellipse
         # path.ellipse 0, 0, @position.length(), @position.length(), 0, 2*Math.PI, false
         @orbitLine = new THREE.Line(path.createPointsGeometry(20000), new THREE.LineBasicMaterial depthTest:true, color: 0x0000ff, linewidth: 2, fog: true)
         orbitRotateAngle = new THREE.Vector3(0, 0, 1).angleTo @mksAngMom
@@ -106,13 +123,30 @@ class Ship extends THREE.Object3D
     control: (keyboard)->
         ()=>
             if keyboard.pressed("w")
-                @mesh.rotation.y -= 0.05
+                @mesh.rotateOnAxis @mesh.pitchAxis, -0.05
             if keyboard.pressed("s")
-                @mesh.rotation.y += 0.05
+                @mesh.rotateOnAxis @mesh.pitchAxis, 0.05
             if keyboard.pressed("d")
-                @mesh.rotation.z += 0.05
+                @mesh.rotateOnAxis @mesh.yawAxis, -0.05
             if keyboard.pressed("a")
-                @mesh.rotation.z -= 0.05
+                @mesh.rotateOnAxis @mesh.yawAxis, 0.05
+            if keyboard.pressed("q")
+                @mesh.rotateOnAxis @mesh.rollAxis, 0.05
+            if keyboard.pressed("e")
+                @mesh.rotateOnAxis @mesh.rollAxis, -0.05
+
+    track: (camera)->
+        ()=>
+            localPos = camera.position.clone()
+            camera.localToWorld(localPos)
+            far = (localPos.distanceTo(@position) > KM(10))
+            @orbitLine.visible = far
+            @navCage.visible = far
+            if far
+                @velArrow.setLength KM(50)
+            else
+                @velArrow.setLength KM(0.5)
+
 
     arrow: (vector, color=0xff0000)->
         direction = vector.clone().normalize()
