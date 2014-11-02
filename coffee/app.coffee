@@ -31,9 +31,8 @@ window.setup = ()->
 
     ship = new Ship M(10)
     scene.add ship
-    ship.orbit planet, LEO
+    ship.orbit planet, 4*LEO
     ship.captureCamera camera
-
     gameLoop.push ship.control(keyboard)
     gameLoop.push ship.simulate()
     gameLoop.push ship.track(camera)

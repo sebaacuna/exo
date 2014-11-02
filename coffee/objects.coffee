@@ -1,5 +1,8 @@
 mksG = 6.67384e-11 #(m3 kg-1 s-2)
 NULLVECTOR = new THREE.Vector3
+X = new THREE.Vector3 1, 0, 0
+Y = new THREE.Vector3 0, 1, 0
+Z = new THREE.Vector3 0, 0, 1
 
 Planet = 
     create: (name, radius)->
@@ -29,7 +32,7 @@ class Ship extends THREE.Object3D
         @velArrow = @arrow new THREE.Vector3(KM(1),0,0)
         @add @velArrow
 
-        @accelArrow = @arrow new THREE.Vector3 1,0,0
+        @accelArrow = @arrow X
         @add @accelArrow
 
         @thrustArrow = @arrow @mesh.rollAxis, 0xffffff
@@ -37,7 +40,7 @@ class Ship extends THREE.Object3D
         @thrust = 0
 
         @navCage = new THREE.Mesh
-        @navCage.geometry = new THREE.CubeGeometry KM(10), KM(10), KM(10)
+        @navCage.geometry = new THREE.BoxGeometry KM(10), KM(10), KM(10)
         @navCage.material = new THREE.MeshBasicMaterial color:0xff0000, wireframe: true
         @add @navCage
 
@@ -51,10 +54,10 @@ class Ship extends THREE.Object3D
 
     orbit: (@boi, gameAltitude)->
         @mksMass = 1000
-        @position.y = @boi.radius + gameAltitude
+        @position.x = @boi.radius + gameAltitude
         mksDistance = mksVector(@position).length()
         mksOrbitalSpeed = Math.sqrt(@boi.mu/mksDistance)
-        @mksVelocity = new THREE.Vector3 mksOrbitalSpeed, 0, 0
+        @mksVelocity = new THREE.Vector3 0,0, mksOrbitalSpeed
         @mksPosition = mksVector(@position)
         @mksAngMom = new THREE.Vector3
         @referencePosition = @position.clone()
@@ -63,25 +66,33 @@ class Ship extends THREE.Object3D
         alignAxis.crossVectors(@mesh.up, @mksVelocity)
         alignAxis.normalize()
         @mesh.rotateOnAxis alignAxis, @mesh.up.angleTo(@mksVelocity)
-        @updateEllipse()
 
     updateEllipse: ()->
-        @mksAngMom.crossVectors @mksPosition, @mksVelocity
-        # orbitalEnergy = 0.5*@mksVelocity.lengthSq()
-        # orbitalEnergy -= @boi.mu/@mksPosition.length()
-        # console.log "E=#{orbitalEnergy}"
-        # ecc2 = 1.0 + 2*orbitalEnergy*@mksAngMom.lengthSq()/(@boi.mu*@boi.mu)
-        # semiMajor = 0.5*@boi.mu/orbitalEnergy
-        # semiMinor = @mksAngMom.length()*Math.sqrt(0.5/orbitalEnergy)
-        # @orbitEllipse = new THREE.EllipseCurve 0, 0, semiMajor, semiMinor
-        ellipse = new THREE.EllipseCurve 0, 0, @position.length(), @position.length(), 0, 2*Math.PI, false
+        ecc2 = 1.0 + 2*@orbitalEnergy*@mksAngMom.lengthSq()/(@boi.mu*@boi.mu)
+        semiMajor = 0.5*@boi.mu/@orbitalEnergy
+        semiMinor = semiMajor*Math.sqrt(1.0 - ecc2)
+        @console 'eccentricity', "#{ecc2} #{semiMajor} #{semiMinor}"
+
+        ellipse = new THREE.EllipseCurve 0, 0, semiMajor, semiMinor, 0, 2*Math.PI, false
         path = new THREE.CurvePath 
         path.add ellipse
-        # path.ellipse 0, 0, @position.length(), @position.length(), 0, 2*Math.PI, false
-        @orbitLine = new THREE.Line(path.createPointsGeometry(20000), new THREE.LineBasicMaterial depthTest:true, color: 0x0000ff, linewidth: 2, fog: true)
-        orbitRotateAngle = new THREE.Vector3(0, 0, 1).angleTo @mksAngMom
-        @orbitLine.rotateOnAxis @mksVelocity.clone().normalize(), orbitRotateAngle 
-        @parent.add @orbitLine
+        geometry = path.createPointsGeometry 2000
+        if not @orbitLine
+            @orbitLine = new THREE.Line geometry, new THREE.LineBasicMaterial linewidth:2, color: 0x0000ff, depthTest: true
+            geometry.dynamic = true
+            @parent.add @orbitLine
+        else
+            @orbitLine.material = new THREE.LineBasicMaterial color: 0x00ff00
+            for v, i in geometry.vertices
+                @orbitLine.geometry.vertices[i].x = v.x
+                @orbitLine.geometry.vertices[i].y = v.y
+            @orbitLine.geometry.verticesNeedUpdate = true
+        
+        normal = @orbitLine.localToWorld Z.clone()
+        orbitRotateAngle = normal.angleTo @mksAngMom
+        if orbitRotateAngle >0
+            orbitRotateAxis = normal.cross(@mksAngMom).normalize()
+            @orbitLine.rotateOnAxis orbitRotateAxis, orbitRotateAngle
 
     captureCamera: (@camera)->
         @cameraTarget.add camera
@@ -126,17 +137,21 @@ class Ship extends THREE.Object3D
                 ++count
             
             @mksPosition.setGameVector @position
-            @velArrow?.setDirection @mksVelocity.clone().normalize()
             oldVel.sub(@mksVelocity)
-            @console 'velocity',  @mksVelocity.length()
-            @console 'acceleration',  oldVel.length()
+
+            @velArrow?.setDirection @mksVelocity.clone().normalize()
+            
+            
+            @console 'velocity',  Math.floor(@mksVelocity.length())
+            @console 'acceleration',  Math.floor(oldVel.length()*1000)/10.0
+            
             @accelArrow?.setLength oldVel.length()*100
             @accelArrow?.setDirection oldVel.negate().normalize()
 
-
-            # console.log @position.angleTo(@referencePosition)/clock.elapsedTime
-            # if @mksPosition.length() - oldPosition.length() > 0.1
-            # console.log Math.floor(@mksPosition.length()*10)/10.0
+            @mksAngMom.crossVectors @mksPosition, @mksVelocity
+            @orbitalEnergy = 0.5*@mksVelocity.lengthSq()
+            @orbitalEnergy -= @boi.mu/@mksPosition.length()
+            @console 'orbital-energy', Math.floor(@orbitalEnergy)
 
     control: (keyboard)->
         ()=>
@@ -164,8 +179,9 @@ class Ship extends THREE.Object3D
             localPos = camera.position.clone()
             camera.localToWorld(localPos)
             far = (localPos.distanceTo(@position) > KM(10))
-            @orbitLine.visible = far
+            @orbitLine?.visible = far
             @navCage.visible = far
+            @updateEllipse()
             if far
                 @velArrow.setLength @mksVelocity.length()
             else
@@ -176,13 +192,8 @@ class Ship extends THREE.Object3D
         new THREE.ArrowHelper direction, @position, vector.length(), color
         
     thrustCalc: (x,v,dt)->
-        # if not @thrustMatrix
-        #     @thrustMatrix = new THREE.Matrix4
-        # @thrustMatrix.getInverse @mesh.matrix
-
         if @thrust
-            F = 2000 #Thrust [N]
-            # @mesh.updateMatrix()
+            F = 200000 #Thrust [N]
             thrustVector = @mesh.rollAxis.clone()
             thrustVector.normalize()
             thrustVector.applyMatrix4 @mesh.matrix

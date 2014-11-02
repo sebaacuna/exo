@@ -49,7 +49,7 @@
     scene.add(planet);
     ship = new Ship(M(10));
     scene.add(ship);
-    ship.orbit(planet, LEO);
+    ship.orbit(planet, 4 * LEO);
     ship.captureCamera(camera);
     gameLoop.push(ship.control(keyboard));
     gameLoop.push(ship.simulate());
@@ -81,13 +81,19 @@
 }).call(this);
 
 (function() {
-  var NULLVECTOR, Planet, Ship, mksG,
+  var NULLVECTOR, Planet, Ship, X, Y, Z, mksG,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   mksG = 6.67384e-11;
 
   NULLVECTOR = new THREE.Vector3;
+
+  X = new THREE.Vector3(1, 0, 0);
+
+  Y = new THREE.Vector3(0, 1, 0);
+
+  Z = new THREE.Vector3(0, 0, 1);
 
   Planet = {
     create: function(name, radius) {
@@ -121,13 +127,13 @@
       this.add(this.cameraTarget);
       this.velArrow = this.arrow(new THREE.Vector3(KM(1), 0, 0));
       this.add(this.velArrow);
-      this.accelArrow = this.arrow(new THREE.Vector3(1, 0, 0));
+      this.accelArrow = this.arrow(X);
       this.add(this.accelArrow);
       this.thrustArrow = this.arrow(this.mesh.rollAxis, 0xffffff);
       this.add(this.thrustArrow);
       this.thrust = 0;
       this.navCage = new THREE.Mesh;
-      this.navCage.geometry = new THREE.CubeGeometry(KM(10), KM(10), KM(10));
+      this.navCage.geometry = new THREE.BoxGeometry(KM(10), KM(10), KM(10));
       this.navCage.material = new THREE.MeshBasicMaterial({
         color: 0xff0000,
         wireframe: true
@@ -149,35 +155,55 @@
       var alignAxis, mksDistance, mksOrbitalSpeed;
       this.boi = boi;
       this.mksMass = 1000;
-      this.position.y = this.boi.radius + gameAltitude;
+      this.position.x = this.boi.radius + gameAltitude;
       mksDistance = mksVector(this.position).length();
       mksOrbitalSpeed = Math.sqrt(this.boi.mu / mksDistance);
-      this.mksVelocity = new THREE.Vector3(mksOrbitalSpeed, 0, 0);
+      this.mksVelocity = new THREE.Vector3(0, 0, mksOrbitalSpeed);
       this.mksPosition = mksVector(this.position);
       this.mksAngMom = new THREE.Vector3;
       this.referencePosition = this.position.clone();
       alignAxis = new THREE.Vector3;
       alignAxis.crossVectors(this.mesh.up, this.mksVelocity);
       alignAxis.normalize();
-      this.mesh.rotateOnAxis(alignAxis, this.mesh.up.angleTo(this.mksVelocity));
-      return this.updateEllipse();
+      return this.mesh.rotateOnAxis(alignAxis, this.mesh.up.angleTo(this.mksVelocity));
     };
 
     Ship.prototype.updateEllipse = function() {
-      var ellipse, orbitRotateAngle, path;
-      this.mksAngMom.crossVectors(this.mksPosition, this.mksVelocity);
-      ellipse = new THREE.EllipseCurve(0, 0, this.position.length(), this.position.length(), 0, 2 * Math.PI, false);
+      var ecc2, ellipse, geometry, i, normal, orbitRotateAngle, orbitRotateAxis, path, semiMajor, semiMinor, v, _i, _len, _ref;
+      ecc2 = 1.0 + 2 * this.orbitalEnergy * this.mksAngMom.lengthSq() / (this.boi.mu * this.boi.mu);
+      semiMajor = 0.5 * this.boi.mu / this.orbitalEnergy;
+      semiMinor = semiMajor * Math.sqrt(1.0 - ecc2);
+      this.console('eccentricity', "" + ecc2 + " " + semiMajor + " " + semiMinor);
+      ellipse = new THREE.EllipseCurve(0, 0, semiMajor, semiMinor, 0, 2 * Math.PI, false);
       path = new THREE.CurvePath;
       path.add(ellipse);
-      this.orbitLine = new THREE.Line(path.createPointsGeometry(20000), new THREE.LineBasicMaterial({
-        depthTest: true,
-        color: 0x0000ff,
-        linewidth: 2,
-        fog: true
-      }));
-      orbitRotateAngle = new THREE.Vector3(0, 0, 1).angleTo(this.mksAngMom);
-      this.orbitLine.rotateOnAxis(this.mksVelocity.clone().normalize(), orbitRotateAngle);
-      return this.parent.add(this.orbitLine);
+      geometry = path.createPointsGeometry(2000);
+      if (!this.orbitLine) {
+        this.orbitLine = new THREE.Line(geometry, new THREE.LineBasicMaterial({
+          linewidth: 2,
+          color: 0x0000ff,
+          depthTest: true
+        }));
+        geometry.dynamic = true;
+        this.parent.add(this.orbitLine);
+      } else {
+        this.orbitLine.material = new THREE.LineBasicMaterial({
+          color: 0x00ff00
+        });
+        _ref = geometry.vertices;
+        for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+          v = _ref[i];
+          this.orbitLine.geometry.vertices[i].x = v.x;
+          this.orbitLine.geometry.vertices[i].y = v.y;
+        }
+        this.orbitLine.geometry.verticesNeedUpdate = true;
+      }
+      normal = this.orbitLine.localToWorld(Z.clone());
+      orbitRotateAngle = normal.angleTo(this.mksAngMom);
+      if (orbitRotateAngle > 0) {
+        orbitRotateAxis = normal.cross(this.mksAngMom).normalize();
+        return this.orbitLine.rotateOnAxis(orbitRotateAxis, orbitRotateAngle);
+      }
     };
 
     Ship.prototype.captureCamera = function(camera) {
@@ -241,16 +267,22 @@
             ++count;
           }
           _this.mksPosition.setGameVector(_this.position);
+          oldVel.sub(_this.mksVelocity);
           if ((_ref = _this.velArrow) != null) {
             _ref.setDirection(_this.mksVelocity.clone().normalize());
           }
-          oldVel.sub(_this.mksVelocity);
-          _this.console('velocity', _this.mksVelocity.length());
-          _this.console('acceleration', oldVel.length());
+          _this.console('velocity', Math.floor(_this.mksVelocity.length()));
+          _this.console('acceleration', Math.floor(oldVel.length() * 1000) / 10.0);
           if ((_ref1 = _this.accelArrow) != null) {
             _ref1.setLength(oldVel.length() * 100);
           }
-          return (_ref2 = _this.accelArrow) != null ? _ref2.setDirection(oldVel.negate().normalize()) : void 0;
+          if ((_ref2 = _this.accelArrow) != null) {
+            _ref2.setDirection(oldVel.negate().normalize());
+          }
+          _this.mksAngMom.crossVectors(_this.mksPosition, _this.mksVelocity);
+          _this.orbitalEnergy = 0.5 * _this.mksVelocity.lengthSq();
+          _this.orbitalEnergy -= _this.boi.mu / _this.mksPosition.length();
+          return _this.console('orbital-energy', Math.floor(_this.orbitalEnergy));
         };
       })(this);
     };
@@ -290,12 +322,15 @@
     Ship.prototype.track = function(camera) {
       return (function(_this) {
         return function() {
-          var far, localPos;
+          var far, localPos, _ref;
           localPos = camera.position.clone();
           camera.localToWorld(localPos);
           far = localPos.distanceTo(_this.position) > KM(10);
-          _this.orbitLine.visible = far;
+          if ((_ref = _this.orbitLine) != null) {
+            _ref.visible = far;
+          }
           _this.navCage.visible = far;
+          _this.updateEllipse();
           if (far) {
             return _this.velArrow.setLength(_this.mksVelocity.length());
           } else {
@@ -317,7 +352,7 @@
     Ship.prototype.thrustCalc = function(x, v, dt) {
       var F, thrustVector;
       if (this.thrust) {
-        F = 2000;
+        F = 200000;
         thrustVector = this.mesh.rollAxis.clone();
         thrustVector.normalize();
         thrustVector.applyMatrix4(this.mesh.matrix);
