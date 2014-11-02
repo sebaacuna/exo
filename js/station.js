@@ -24,7 +24,7 @@
 
   window.scene = new THREE.Scene();
 
-  camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, M(1), KM(100000));
+  camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, M(1), KM(10000000));
 
   renderer = new THREE.WebGLRenderer({
     antialias: true,
@@ -43,6 +43,14 @@
 
   gameLoop = [];
 
+  window.NULLVECTOR = new THREE.Vector3;
+
+  window.X = new THREE.Vector3(1, 0, 0);
+
+  window.Y = new THREE.Vector3(0, 1, 0);
+
+  window.Z = new THREE.Vector3(0, 0, 1);
+
   window.setup = function() {
     var planet, ship;
     planet = Planet.create('Earth', KM(6378));
@@ -55,6 +63,7 @@
     gameLoop.push(ship.simulate());
     gameLoop.push(ship.track(camera));
     gameLoop.push(camera.control(keyboard, renderer));
+    scene.add(new THREE.ArrowHelper(Z, NULLVECTOR, KM(100000), 0xffffff));
     return window.ship = ship;
   };
 
@@ -81,19 +90,15 @@
 }).call(this);
 
 (function() {
-  var NULLVECTOR, Planet, Ship, X, Y, Z, mksG,
+  var Planet, Ship, TIMESCALE, TWOPI, mksG,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   mksG = 6.67384e-11;
 
-  NULLVECTOR = new THREE.Vector3;
+  TWOPI = Math.PI + Math.PI;
 
-  X = new THREE.Vector3(1, 0, 0);
-
-  Y = new THREE.Vector3(0, 1, 0);
-
-  Z = new THREE.Vector3(0, 0, 1);
+  TIMESCALE = 5;
 
   Planet = {
     create: function(name, radius) {
@@ -139,6 +144,17 @@
         wireframe: true
       });
       this.add(this.navCage);
+      this.periapsisCage = new THREE.Mesh;
+      this.periapsisCage.geometry = new THREE.BoxGeometry(KM(100), KM(100), KM(100));
+      this.periapsisCage.material = new THREE.MeshBasicMaterial({
+        color: 0x00ff00
+      });
+      this.apoapsisCage = new THREE.Mesh;
+      this.apoapsisCage.geometry = new THREE.BoxGeometry(KM(100), KM(100), KM(100));
+      this.apoapsisCage.material = new THREE.MeshBasicMaterial({
+        color: 0x0000ff
+      });
+      this.mesh.add(new THREE.AxisHelper(KM(1000)));
       this.consoleElems = {};
     }
 
@@ -165,16 +181,30 @@
       alignAxis = new THREE.Vector3;
       alignAxis.crossVectors(this.mesh.up, this.mksVelocity);
       alignAxis.normalize();
-      return this.mesh.rotateOnAxis(alignAxis, this.mesh.up.angleTo(this.mksVelocity));
+      this.mesh.rotateOnAxis(alignAxis, this.mesh.up.angleTo(this.mksVelocity));
+      this.eccArrow = new THREE.ArrowHelper(Z, NULLVECTOR, 0, 0x00ff00);
+      this.boi.add(this.periapsisCage);
+      this.boi.add(this.apoapsisCage);
+      return this.boi.add(this.eccArrow);
     };
 
     Ship.prototype.updateEllipse = function() {
-      var ecc2, ellipse, geometry, i, normal, orbitRotateAngle, orbitRotateAxis, path, semiMajor, semiMinor, v, _i, _len, _ref;
-      ecc2 = 1.0 + 2 * this.orbitalEnergy * this.mksAngMom.lengthSq() / (this.boi.mu * this.boi.mu);
-      semiMajor = 0.5 * this.boi.mu / this.orbitalEnergy;
-      semiMinor = semiMajor * Math.sqrt(1.0 - ecc2);
-      this.console('eccentricity', "" + ecc2 + " " + semiMajor + " " + semiMinor);
-      ellipse = new THREE.EllipseCurve(0, 0, semiMajor, semiMinor, 0, 2 * Math.PI, false);
+      var P, ecc, ecc2, eccVector, ellipse, geometry, i, inclineAngle, inclineAxis, normal, path, r, semiMajor, semiMinor, v, _i, _len, _ref;
+      r = this.mksPosition.clone().normalize();
+      eccVector = this.mksVelocity.clone().cross(this.mksAngMom).multiplyScalar(1 / this.boi.mu);
+      eccVector.sub(r);
+      ecc = eccVector.length();
+      ecc2 = eccVector.lengthSq();
+      eccVector.normalize();
+      P = this.mksAngMom.lengthSq() / this.boi.mu;
+      this.periapsisCage.position.copy(eccVector.clone().multiplyScalar(P / (1 + ecc)));
+      this.apoapsisCage.position.copy(eccVector.clone().multiplyScalar(-P / (1 - ecc)));
+      this.eccArrow.setDirection(eccVector);
+      this.eccArrow.setLength(P / (1 + ecc));
+      semiMajor = P / (1 - ecc2);
+      semiMinor = P / (1 + ecc2);
+      this.console('eccentricity', "" + (Math.floor(ecc * 100)) + " " + (Math.floor(semiMajor)) + " " + (Math.floor(semiMinor)) + " " + (Math.floor(P / (1 + ecc))));
+      ellipse = new THREE.EllipseCurve(P / (1 + ecc) - semiMajor, 0, semiMajor, semiMinor, 0, 2 * Math.PI, false);
       path = new THREE.CurvePath;
       path.add(ellipse);
       geometry = path.createPointsGeometry(2000);
@@ -184,8 +214,10 @@
           color: 0x0000ff,
           depthTest: true
         }));
+        this.orbitLine.up = new THREE.Vector3(1, 0, 0);
         geometry.dynamic = true;
         this.parent.add(this.orbitLine);
+        this.orbitLine.add(new THREE.ArrowHelper(this.orbitLine.up, NULLVECTOR, KM(10000), 0xff00ff));
       } else {
         this.orbitLine.material = new THREE.LineBasicMaterial({
           color: 0x00ff00
@@ -199,17 +231,20 @@
         this.orbitLine.geometry.verticesNeedUpdate = true;
       }
       normal = this.orbitLine.localToWorld(Z.clone());
-      orbitRotateAngle = normal.angleTo(this.mksAngMom);
-      if (orbitRotateAngle > 0) {
-        orbitRotateAxis = normal.cross(this.mksAngMom).normalize();
-        return this.orbitLine.rotateOnAxis(orbitRotateAxis, orbitRotateAngle);
+      inclineAngle = normal.angleTo(this.mksAngMom);
+      if (inclineAngle !== 0) {
+        inclineAxis = new THREE.Vector3;
+        inclineAxis.crossVectors(normal, this.mksAngMom.clone().normalize());
+        inclineAxis.normalize();
+        this.orbitLine.rotateOnAxis(inclineAxis, inclineAngle);
       }
+      return this.orbitLine.rotateOnAxis(Z, this.orbitLine.up.angleTo(this.orbitLine.worldToLocal(eccVector)));
     };
 
     Ship.prototype.captureCamera = function(camera) {
       this.camera = camera;
       this.cameraTarget.add(camera);
-      camera.position.z = KM(0.1);
+      camera.position.z = KM(2000);
       camera.target = this.cameraTarget;
       return camera.control = function(keyboard, renderer) {
         return (function(_this) {
@@ -261,7 +296,7 @@
           oldVel = _this.mksVelocity.clone();
           dt = 0.00001;
           simulateSeconds = clock.getDelta();
-          simulateSteps = Math.floor(simulateSeconds / dt);
+          simulateSteps = TIMESCALE * Math.floor(simulateSeconds / dt);
           while (count < simulateSteps) {
             THREEx.rk4(_this.mksPosition, _this.mksVelocity, _this.a, dt);
             ++count;

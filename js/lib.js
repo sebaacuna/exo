@@ -1809,7 +1809,7 @@ THREEx.Planets.createEarthCloud	= function(){
 		opacity		: 0.8,
 	})
 	var mesh	= new THREE.Mesh(geometry, material)
-	return mesh	
+	return mesh
 }
 
 

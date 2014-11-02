@@ -1,8 +1,6 @@
 mksG = 6.67384e-11 #(m3 kg-1 s-2)
-NULLVECTOR = new THREE.Vector3
-X = new THREE.Vector3 1, 0, 0
-Y = new THREE.Vector3 0, 1, 0
-Z = new THREE.Vector3 0, 0, 1
+TWOPI = Math.PI+Math.PI
+TIMESCALE = 5
 
 Planet = 
     create: (name, radius)->
@@ -44,6 +42,16 @@ class Ship extends THREE.Object3D
         @navCage.material = new THREE.MeshBasicMaterial color:0xff0000, wireframe: true
         @add @navCage
 
+        @periapsisCage = new THREE.Mesh
+        @periapsisCage.geometry = new THREE.BoxGeometry KM(100), KM(100), KM(100)
+        @periapsisCage.material = new THREE.MeshBasicMaterial color: 0x00ff00
+
+        @apoapsisCage = new THREE.Mesh
+        @apoapsisCage.geometry = new THREE.BoxGeometry KM(100), KM(100), KM(100)
+        @apoapsisCage.material = new THREE.MeshBasicMaterial color: 0x0000ff
+
+        @mesh.add new THREE.AxisHelper KM(1000)
+
         @consoleElems = {}
 
     console: (key, value)->
@@ -67,36 +75,61 @@ class Ship extends THREE.Object3D
         alignAxis.normalize()
         @mesh.rotateOnAxis alignAxis, @mesh.up.angleTo(@mksVelocity)
 
-    updateEllipse: ()->
-        ecc2 = 1.0 + 2*@orbitalEnergy*@mksAngMom.lengthSq()/(@boi.mu*@boi.mu)
-        semiMajor = 0.5*@boi.mu/@orbitalEnergy
-        semiMinor = semiMajor*Math.sqrt(1.0 - ecc2)
-        @console 'eccentricity', "#{ecc2} #{semiMajor} #{semiMinor}"
+        @eccArrow = new THREE.ArrowHelper Z, NULLVECTOR, 0, 0x00ff00
+        @boi.add @periapsisCage
+        @boi.add @apoapsisCage
+        @boi.add @eccArrow
 
-        ellipse = new THREE.EllipseCurve 0, 0, semiMajor, semiMinor, 0, 2*Math.PI, false
+    updateEllipse: ()->
+        r = @mksPosition.clone().normalize()
+        eccVector = @mksVelocity.clone().cross(@mksAngMom).multiplyScalar 1/@boi.mu
+        eccVector.sub r
+        ecc = eccVector.length()
+        ecc2 = eccVector.lengthSq()
+        eccVector.normalize()
+
+        P = @mksAngMom.lengthSq()/@boi.mu
+
+        @periapsisCage.position.copy(eccVector.clone().multiplyScalar P/(1+ecc))
+        @apoapsisCage.position.copy(eccVector.clone().multiplyScalar -P/(1-ecc))
+        
+        @eccArrow.setDirection eccVector
+        @eccArrow.setLength P/(1+ecc)
+
+        semiMajor = P/(1-ecc2)
+        semiMinor = P/(1+ecc2)
+        @console 'eccentricity', "#{Math.floor(ecc*100)} #{Math.floor semiMajor} #{Math.floor semiMinor} #{Math.floor P/(1+ecc)}"
+
+        ellipse = new THREE.EllipseCurve P/(1+ecc)-semiMajor, 0, semiMajor, semiMinor, 0, 2*Math.PI, false
         path = new THREE.CurvePath 
         path.add ellipse
         geometry = path.createPointsGeometry 2000
         if not @orbitLine
             @orbitLine = new THREE.Line geometry, new THREE.LineBasicMaterial linewidth:2, color: 0x0000ff, depthTest: true
+            @orbitLine.up = new THREE.Vector3 1,0,0
             geometry.dynamic = true
             @parent.add @orbitLine
+            @orbitLine.add new THREE.ArrowHelper @orbitLine.up, NULLVECTOR, KM(10000), 0xff00ff
         else
             @orbitLine.material = new THREE.LineBasicMaterial color: 0x00ff00
             for v, i in geometry.vertices
                 @orbitLine.geometry.vertices[i].x = v.x
                 @orbitLine.geometry.vertices[i].y = v.y
             @orbitLine.geometry.verticesNeedUpdate = true
-        
+
         normal = @orbitLine.localToWorld Z.clone()
-        orbitRotateAngle = normal.angleTo @mksAngMom
-        if orbitRotateAngle >0
-            orbitRotateAxis = normal.cross(@mksAngMom).normalize()
-            @orbitLine.rotateOnAxis orbitRotateAxis, orbitRotateAngle
+        inclineAngle = normal.angleTo @mksAngMom
+        if inclineAngle != 0
+            inclineAxis = new THREE.Vector3
+            inclineAxis.crossVectors normal, @mksAngMom.clone().normalize()
+            inclineAxis.normalize()
+            @orbitLine.rotateOnAxis inclineAxis, inclineAngle
+
+        @orbitLine.rotateOnAxis Z, @orbitLine.up.angleTo @orbitLine.worldToLocal(eccVector)
 
     captureCamera: (@camera)->
         @cameraTarget.add camera
-        camera.position.z = KM(0.1)
+        camera.position.z = KM(2000)
         camera.target = @cameraTarget
         camera.control = (keyboard, renderer)->
             ()=>
@@ -131,7 +164,7 @@ class Ship extends THREE.Object3D
             oldVel = @mksVelocity.clone()
             dt = 0.00001
             simulateSeconds = clock.getDelta()
-            simulateSteps = Math.floor simulateSeconds/dt
+            simulateSteps = TIMESCALE*Math.floor simulateSeconds/dt
             while count < simulateSteps
                 THREEx.rk4 @mksPosition, @mksVelocity, @a, dt
                 ++count
@@ -140,7 +173,6 @@ class Ship extends THREE.Object3D
             oldVel.sub(@mksVelocity)
 
             @velArrow?.setDirection @mksVelocity.clone().normalize()
-            
             
             @console 'velocity',  Math.floor(@mksVelocity.length())
             @console 'acceleration',  Math.floor(oldVel.length()*1000)/10.0

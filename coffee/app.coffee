@@ -13,7 +13,7 @@ window.LEO = KM(160)
 
 # Basics
 window.scene = new THREE.Scene()
-camera = new THREE.PerspectiveCamera 90, window.innerWidth/window.innerHeight, M(1), KM(100000)
+camera = new THREE.PerspectiveCamera 90, window.innerWidth/window.innerHeight, M(1), KM(10000000)
 renderer = new THREE.WebGLRenderer antialias: true, logarithmicDepthBuffer: true
 renderer.setSize window.innerWidth, window.innerHeight
 renderer.shadowMapEnabled   = true
@@ -22,6 +22,11 @@ keyboard = new THREEx.KeyboardState
 clock = new THREE.Clock false
 scene.add new THREE.AmbientLight 0x888888
 gameLoop = []
+
+window.NULLVECTOR = new THREE.Vector3
+window.X = new THREE.Vector3 1, 0, 0
+window.Y = new THREE.Vector3 0, 1, 0
+window.Z = new THREE.Vector3 0, 0, 1
 
 
 # Prepare scene
@@ -38,6 +43,8 @@ window.setup = ()->
     gameLoop.push ship.track(camera)
     gameLoop.push camera.control(keyboard, renderer)
 
+
+    scene.add new THREE.ArrowHelper Z, NULLVECTOR, KM(100000), 0xffffff
     # refShip = new Ship M(80)
     # scene.add refShip
     # refShip.orbit planet, LEO+KM(10)
