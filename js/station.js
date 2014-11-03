@@ -98,7 +98,7 @@
 
   TWOPI = Math.PI + Math.PI;
 
-  TIMESCALE = 5;
+  TIMESCALE = 1;
 
   Planet = {
     create: function(name, radius) {
@@ -130,7 +130,7 @@
       this.mesh.pitchAxis = (new THREE.Vector3).crossVectors(this.mesh.yawAxis, this.mesh.rollAxis);
       this.cameraTarget = new THREE.Object3D;
       this.add(this.cameraTarget);
-      this.velArrow = this.arrow(new THREE.Vector3(KM(1), 0, 0));
+      this.velArrow = this.arrow(new THREE.Vector3(KM(1000), 0, 0));
       this.add(this.velArrow);
       this.accelArrow = this.arrow(X);
       this.add(this.accelArrow);
@@ -174,7 +174,7 @@
       this.position.x = this.boi.radius + gameAltitude;
       mksDistance = mksVector(this.position).length();
       mksOrbitalSpeed = Math.sqrt(this.boi.mu / mksDistance);
-      this.mksVelocity = new THREE.Vector3(0, 0, mksOrbitalSpeed);
+      this.mksVelocity = new THREE.Vector3(0, 0, mksOrbitalSpeed * 1.2);
       this.mksPosition = mksVector(this.position);
       this.mksAngMom = new THREE.Vector3;
       this.referencePosition = this.position.clone();
@@ -197,14 +197,14 @@
       ecc2 = eccVector.lengthSq();
       eccVector.normalize();
       P = this.mksAngMom.lengthSq() / this.boi.mu;
-      this.periapsisCage.position.copy(eccVector.clone().multiplyScalar(P / (1 + ecc)));
       this.apoapsisCage.position.copy(eccVector.clone().multiplyScalar(-P / (1 - ecc)));
+      this.periapsisCage.position.copy(eccVector.multiplyScalar(P / (1 + ecc)));
       this.eccArrow.setDirection(eccVector);
-      this.eccArrow.setLength(P / (1 + ecc));
+      this.eccArrow.setLength(eccVector.length());
       semiMajor = P / (1 - ecc2);
-      semiMinor = P / (1 + ecc2);
+      semiMinor = semiMajor * Math.sqrt(1 - ecc2);
       this.console('eccentricity', "" + (Math.floor(ecc * 100)) + " " + (Math.floor(semiMajor)) + " " + (Math.floor(semiMinor)) + " " + (Math.floor(P / (1 + ecc))));
-      ellipse = new THREE.EllipseCurve(P / (1 + ecc) - semiMajor, 0, semiMajor, semiMinor, 0, 2 * Math.PI, false);
+      ellipse = new THREE.EllipseCurve(eccVector.length() - semiMajor, 0, semiMajor, semiMinor, 0, 2 * Math.PI, false);
       path = new THREE.CurvePath;
       path.add(ellipse);
       geometry = path.createPointsGeometry(2000);
@@ -246,6 +246,7 @@
       this.cameraTarget.add(camera);
       camera.position.z = KM(2000);
       camera.target = this.cameraTarget;
+      camera.target.rotation.x = -Math.PI / 2;
       return camera.control = function(keyboard, renderer) {
         return (function(_this) {
           return function() {
@@ -317,7 +318,9 @@
           _this.mksAngMom.crossVectors(_this.mksPosition, _this.mksVelocity);
           _this.orbitalEnergy = 0.5 * _this.mksVelocity.lengthSq();
           _this.orbitalEnergy -= _this.boi.mu / _this.mksPosition.length();
-          return _this.console('orbital-energy', Math.floor(_this.orbitalEnergy));
+          _this.console('orbital-energy', Math.floor(_this.orbitalEnergy * 10000) / 10000);
+          _this.console('angular-moment', Math.floor(_this.mksAngMom.length() * 10000) / 10000);
+          return _this.console('r', _this.mksPosition.length());
         };
       })(this);
     };

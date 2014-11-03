@@ -1,6 +1,6 @@
 mksG = 6.67384e-11 #(m3 kg-1 s-2)
 TWOPI = Math.PI+Math.PI
-TIMESCALE = 5
+TIMESCALE = 1
 
 Planet = 
     create: (name, radius)->
@@ -27,7 +27,7 @@ class Ship extends THREE.Object3D
         @cameraTarget = new THREE.Object3D
         @add @cameraTarget
         
-        @velArrow = @arrow new THREE.Vector3(KM(1),0,0)
+        @velArrow = @arrow new THREE.Vector3(KM(1000),0,0)
         @add @velArrow
 
         @accelArrow = @arrow X
@@ -65,7 +65,7 @@ class Ship extends THREE.Object3D
         @position.x = @boi.radius + gameAltitude
         mksDistance = mksVector(@position).length()
         mksOrbitalSpeed = Math.sqrt(@boi.mu/mksDistance)
-        @mksVelocity = new THREE.Vector3 0,0, mksOrbitalSpeed
+        @mksVelocity = new THREE.Vector3 0,0, mksOrbitalSpeed*1.2
         @mksPosition = mksVector(@position)
         @mksAngMom = new THREE.Vector3
         @referencePosition = @position.clone()
@@ -90,17 +90,17 @@ class Ship extends THREE.Object3D
 
         P = @mksAngMom.lengthSq()/@boi.mu
 
-        @periapsisCage.position.copy(eccVector.clone().multiplyScalar P/(1+ecc))
         @apoapsisCage.position.copy(eccVector.clone().multiplyScalar -P/(1-ecc))
-        
+        @periapsisCage.position.copy(eccVector.multiplyScalar P/(1+ecc))
+
         @eccArrow.setDirection eccVector
-        @eccArrow.setLength P/(1+ecc)
+        @eccArrow.setLength eccVector.length()
 
         semiMajor = P/(1-ecc2)
-        semiMinor = P/(1+ecc2)
+        semiMinor = semiMajor*Math.sqrt (1-ecc2)
         @console 'eccentricity', "#{Math.floor(ecc*100)} #{Math.floor semiMajor} #{Math.floor semiMinor} #{Math.floor P/(1+ecc)}"
 
-        ellipse = new THREE.EllipseCurve P/(1+ecc)-semiMajor, 0, semiMajor, semiMinor, 0, 2*Math.PI, false
+        ellipse = new THREE.EllipseCurve eccVector.length()-semiMajor, 0, semiMajor, semiMinor, 0, 2*Math.PI, false
         path = new THREE.CurvePath 
         path.add ellipse
         geometry = path.createPointsGeometry 2000
@@ -131,6 +131,7 @@ class Ship extends THREE.Object3D
         @cameraTarget.add camera
         camera.position.z = KM(2000)
         camera.target = @cameraTarget
+        camera.target.rotation.x = -Math.PI/2
         camera.control = (keyboard, renderer)->
             ()=>
                 if keyboard.pressed "shift"
@@ -183,7 +184,9 @@ class Ship extends THREE.Object3D
             @mksAngMom.crossVectors @mksPosition, @mksVelocity
             @orbitalEnergy = 0.5*@mksVelocity.lengthSq()
             @orbitalEnergy -= @boi.mu/@mksPosition.length()
-            @console 'orbital-energy', Math.floor(@orbitalEnergy)
+            @console 'orbital-energy', Math.floor(@orbitalEnergy*10000)/10000
+            @console 'angular-moment', Math.floor(@mksAngMom.length()*10000)/10000
+            @console 'r', @mksPosition.length()
 
     control: (keyboard)->
         ()=>
