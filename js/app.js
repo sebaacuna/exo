@@ -421,31 +421,6 @@
 }).call(this);
 
 (function() {
-  var app, fs, io;
-
-  app = require('http').createServer(function(req, res) {
-    res.writeHead(200);
-    return res.end('EXO');
-  });
-
-  io = require('socket.io')(app);
-
-  fs = require('fs');
-
-  io.on('connection', function(socket) {
-    socket.emit('comm', {
-      hello: 'world'
-    });
-    return socket.on('comm', function(data) {
-      return console.log(data);
-    });
-  });
-
-  app.listen(8002);
-
-}).call(this);
-
-(function() {
   window.THREEx = window.THREEx || {};
 
   window.THREEx.rk4 = function(x, v, a, dt) {

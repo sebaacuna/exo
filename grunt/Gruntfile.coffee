@@ -6,7 +6,7 @@ module.exports = (grunt) ->
       sourceMap: true
       app:
         src: [ "../coffee/**.coffee" ]
-        dest: "../js/station.js"
+        dest: "../js/app.js"
 
     #Concatenate all javascript libfiles into a single slug
     #Assumes individual files are already minified (no further uglification/minification)

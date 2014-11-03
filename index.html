@@ -24,10 +24,10 @@
             Eccentricity: <span id="console-eccentricity"></span>
         </div>
         <script src="js/lib.js"></script>
-        <script src="js/station.js"></script>
+        <script src="js/app.js"></script>
         <script>
             setup();
-            run();
+            socket.on('connect', run)
         </script>
     </body>
 </html>

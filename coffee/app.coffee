@@ -28,6 +28,10 @@ window.X = new THREE.Vector3 1, 0, 0
 window.Y = new THREE.Vector3 0, 1, 0
 window.Z = new THREE.Vector3 0, 0, 1
 
+window.socket = io('http://localhost:8002')
+socket.on 'comm', (data)->
+    console.log data
+    socket.emit 'comm', 'ACK'
 
 # Prepare scene
 window.setup = ()->
