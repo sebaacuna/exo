@@ -1,6 +1,6 @@
 mksG = 6.67384e-11 #(m3 kg-1 s-2)
 TWOPI = Math.PI+Math.PI
-TIMESCALE = 1
+TIMESCALE = 5
 
 Planet = 
     create: (name, radius)->

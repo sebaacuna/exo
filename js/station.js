@@ -98,7 +98,7 @@
 
   TWOPI = Math.PI + Math.PI;
 
-  TIMESCALE = 1;
+  TIMESCALE = 5;
 
   Planet = {
     create: function(name, radius) {
