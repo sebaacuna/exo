@@ -1,5 +1,5 @@
 (function() {
-  var SCALE, animate, camera, clock, gameLoop, keyboard, render, renderer;
+  var SCALE, animate, camera, clock, gameLoop, keyboard, renderer;
 
   SCALE = 1;
 
@@ -12,12 +12,11 @@
   };
 
   window.mksVector = function(gameVector) {
-    var vector;
-    vector = gameVector.clone().multiplyScalar(1.0 / SCALE);
-    vector.setGameVector = function(v) {
-      return v.copy(this).multiplyScalar(SCALE);
-    };
-    return vector;
+    return gameVector.clone().multiplyScalar(1.0 / SCALE);
+  };
+
+  window.setGameVector = function(mksV, gV) {
+    return gV.copy(mksV).multiplyScalar(SCALE);
   };
 
   window.LEO = KM(160);
@@ -51,13 +50,6 @@
 
   window.Z = new THREE.Vector3(0, 0, 1);
 
-  window.socket = io('http://localhost:8002');
-
-  socket.on('comm', function(data) {
-    console.log(data);
-    return socket.emit('comm', 'ACK');
-  });
-
   window.setup = function() {
     var planet, ship;
     planet = Planet.create('Earth', KM(6378));
@@ -67,29 +59,54 @@
     ship.orbit(planet, 4 * LEO);
     ship.captureCamera(camera);
     gameLoop.push(ship.control(keyboard));
-    gameLoop.push(ship.simulate());
     gameLoop.push(ship.track(camera));
     gameLoop.push(camera.control(keyboard, renderer));
     scene.add(new THREE.ArrowHelper(Z, NULLVECTOR, KM(100000), 0xffffff));
     return window.ship = ship;
   };
 
-  window.run = function() {
-    render();
-    return animate();
-  };
-
-  render = function() {
-    return renderer.render(scene, camera);
-  };
-
   animate = function() {
     var f, _i, _len;
+    renderer.render(scene, camera);
     for (_i = 0, _len = gameLoop.length; _i < _len; _i++) {
       f = gameLoop[_i];
       f();
     }
-    return requestAnimationFrame(run);
+    return requestAnimationFrame(animate);
+  };
+
+  window.start = function() {
+    var incomingPos, incomingVel;
+    setup();
+    incomingPos = new THREE.Vector3;
+    incomingVel = new THREE.Vector3;
+    window.socket = io('http://localhost:8002');
+    socket.on('comm', function(data) {
+      console.log(data);
+      return socket.emit('comm', 'ACK');
+    });
+    socket.on('simulation', function(data) {
+      var shipState, uuid, _results;
+      _results = [];
+      for (uuid in data) {
+        shipState = data[uuid];
+        if (uuid === ship.uuid) {
+          _results.push(ship.updateState(shipState.r, shipState.v));
+        } else {
+          _results.push(void 0);
+        }
+      }
+      return _results;
+    });
+    socket.on('connect', function() {
+      return socket.emit('phasein', {
+        uuid: ship.uuid,
+        r: ship.mksPosition.toArray(),
+        v: ship.mksVelocity.toArray(),
+        mu: ship.boi.mu
+      });
+    });
+    return animate();
   };
 
   document.body.appendChild(renderer.domElement);
@@ -97,7 +114,7 @@
 }).call(this);
 
 (function() {
-  var Planet, Ship, TIMESCALE, TWOPI, mksG,
+  var $acceleration, Planet, Ship, TIMESCALE, TWOPI, mksG,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -106,6 +123,8 @@
   TWOPI = Math.PI + Math.PI;
 
   TIMESCALE = 5;
+
+  $acceleration = new THREE.Vector3;
 
   Planet = {
     create: function(name, radius) {
@@ -289,7 +308,7 @@
       clock.start();
       return (function(_this) {
         return function() {
-          var count, dt, oldPosition, oldVel, simulateSeconds, simulateSteps, _ref, _ref1, _ref2;
+          var count, dt, pos, simulateSeconds, simulateSteps, vel;
           if (!_this.a) {
             _this.a = function(x, v, dt) {
               var magnitude, r;
@@ -300,36 +319,44 @@
             };
           }
           count = 0;
-          oldPosition = _this.mksPosition.clone();
-          oldVel = _this.mksVelocity.clone();
+          pos = _this.mksPosition.clone();
+          vel = _this.mksVelocity.clone();
           dt = 0.00001;
           simulateSeconds = clock.getDelta();
           simulateSteps = TIMESCALE * Math.floor(simulateSeconds / dt);
           while (count < simulateSteps) {
-            THREEx.rk4(_this.mksPosition, _this.mksVelocity, _this.a, dt);
+            THREEx.rk4(pos, vel, _this.a, dt);
             ++count;
           }
-          _this.mksPosition.setGameVector(_this.position);
-          oldVel.sub(_this.mksVelocity);
-          if ((_ref = _this.velArrow) != null) {
-            _ref.setDirection(_this.mksVelocity.clone().normalize());
-          }
-          _this.console('velocity', Math.floor(_this.mksVelocity.length()));
-          _this.console('acceleration', Math.floor(oldVel.length() * 1000) / 10.0);
-          if ((_ref1 = _this.accelArrow) != null) {
-            _ref1.setLength(oldVel.length() * 100);
-          }
-          if ((_ref2 = _this.accelArrow) != null) {
-            _ref2.setDirection(oldVel.negate().normalize());
-          }
-          _this.mksAngMom.crossVectors(_this.mksPosition, _this.mksVelocity);
-          _this.orbitalEnergy = 0.5 * _this.mksVelocity.lengthSq();
-          _this.orbitalEnergy -= _this.boi.mu / _this.mksPosition.length();
-          _this.console('orbital-energy', Math.floor(_this.orbitalEnergy * 10000) / 10000);
-          _this.console('angular-moment', Math.floor(_this.mksAngMom.length() * 10000) / 10000);
-          return _this.console('r', _this.mksPosition.length());
+          return _this.updateState(pos, vel);
         };
       })(this);
+    };
+
+    Ship.prototype.updateState = function(pos, vel) {
+      var _ref, _ref1, _ref2;
+      setGameVector(pos, this.position);
+      $acceleration.subVectors(vel, this.mksVelocity);
+      this.mksPosition.copy(pos);
+      this.mksVelocity.copy(vel);
+      this.console('velocity', Math.floor(this.mksVelocity.length()));
+      this.console('acceleration', Math.floor($acceleration.length() * 1000) / 10.0);
+      if ((_ref = this.velArrow) != null) {
+        _ref.setDirection(this.mksVelocity);
+      }
+      if ((_ref1 = this.accelArrow) != null) {
+        _ref1.setLength($acceleration.length());
+      }
+      if ((_ref2 = this.accelArrow) != null) {
+        _ref2.setDirection($acceleration.normalize());
+      }
+      this.mksAngMom.crossVectors(this.mksPosition, this.mksVelocity);
+      this.orbitalEnergy = 0.5 * this.mksVelocity.lengthSq();
+      this.orbitalEnergy -= this.boi.mu / this.mksPosition.length();
+      this.console('orbital-energy', Math.floor(this.orbitalEnergy * 10000) / 10000);
+      this.console('angular-moment', Math.floor(this.mksAngMom.length() * 10000) / 10000);
+      this.console('r', this.mksPosition.length());
+      return this.updateEllipse();
     };
 
     Ship.prototype.control = function(keyboard) {
@@ -375,7 +402,6 @@
             _ref.visible = far;
           }
           _this.navCage.visible = far;
-          _this.updateEllipse();
           if (far) {
             return _this.velArrow.setLength(_this.mksVelocity.length());
           } else {

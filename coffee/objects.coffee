@@ -2,6 +2,8 @@ mksG = 6.67384e-11 #(m3 kg-1 s-2)
 TWOPI = Math.PI+Math.PI
 TIMESCALE = 5
 
+$acceleration = new THREE.Vector3
+
 Planet = 
     create: (name, radius)->
         mesh = THREEx.Planets["create#{name}"](radius)
@@ -161,32 +163,38 @@ class Ship extends THREE.Object3D
                     return r.add @thrustCalc(x,v,dt)
 
             count = 0
-            oldPosition = @mksPosition.clone()
-            oldVel = @mksVelocity.clone()
+            pos = @mksPosition.clone()
+            vel = @mksVelocity.clone()
             dt = 0.00001
             simulateSeconds = clock.getDelta()
             simulateSteps = TIMESCALE*Math.floor simulateSeconds/dt
             while count < simulateSteps
-                THREEx.rk4 @mksPosition, @mksVelocity, @a, dt
+                THREEx.rk4 pos, vel, @a, dt
                 ++count
-            
-            @mksPosition.setGameVector @position
-            oldVel.sub(@mksVelocity)
+            @updateState pos, vel
+    
+    updateState: (pos, vel)->
+        setGameVector pos, @position
+        $acceleration.subVectors vel, @mksVelocity
+        @mksPosition.copy pos
+        @mksVelocity.copy vel
 
-            @velArrow?.setDirection @mksVelocity.clone().normalize()
-            
-            @console 'velocity',  Math.floor(@mksVelocity.length())
-            @console 'acceleration',  Math.floor(oldVel.length()*1000)/10.0
-            
-            @accelArrow?.setLength oldVel.length()*100
-            @accelArrow?.setDirection oldVel.negate().normalize()
+        @console 'velocity',  Math.floor(@mksVelocity.length())
+        @console 'acceleration',  Math.floor($acceleration.length()*1000)/10.0
+        
+        @velArrow?.setDirection @mksVelocity
+        @accelArrow?.setLength $acceleration.length()
+        @accelArrow?.setDirection $acceleration.normalize()
 
-            @mksAngMom.crossVectors @mksPosition, @mksVelocity
-            @orbitalEnergy = 0.5*@mksVelocity.lengthSq()
-            @orbitalEnergy -= @boi.mu/@mksPosition.length()
-            @console 'orbital-energy', Math.floor(@orbitalEnergy*10000)/10000
-            @console 'angular-moment', Math.floor(@mksAngMom.length()*10000)/10000
-            @console 'r', @mksPosition.length()
+        @mksAngMom.crossVectors @mksPosition, @mksVelocity
+
+        @orbitalEnergy = 0.5*@mksVelocity.lengthSq()
+        @orbitalEnergy -= @boi.mu/@mksPosition.length()
+        @console 'orbital-energy', Math.floor(@orbitalEnergy*10000)/10000
+        @console 'angular-moment', Math.floor(@mksAngMom.length()*10000)/10000
+        @console 'r', @mksPosition.length()
+
+        @updateEllipse()
 
     control: (keyboard)->
         ()=>
@@ -216,7 +224,6 @@ class Ship extends THREE.Object3D
             far = (localPos.distanceTo(@position) > KM(10))
             @orbitLine?.visible = far
             @navCage.visible = far
-            @updateEllipse()
             if far
                 @velArrow.setLength @mksVelocity.length()
             else

@@ -3,11 +3,8 @@ SCALE = 1
 window.KM = (kms) -> M(kms)*1000
 window.M = (mts) -> mts*SCALE
 
-window.mksVector = (gameVector) -> 
-    vector = gameVector.clone().multiplyScalar(1.0/SCALE)
-    vector.setGameVector = (v)->
-        v.copy(@).multiplyScalar(SCALE)
-    return vector
+window.mksVector = (gameVector) -> gameVector.clone().multiplyScalar(1.0/SCALE)
+window.setGameVector = (mksV, gV)-> gV.copy(mksV).multiplyScalar(SCALE)
 
 window.LEO = KM(160)
 
@@ -28,11 +25,6 @@ window.X = new THREE.Vector3 1, 0, 0
 window.Y = new THREE.Vector3 0, 1, 0
 window.Z = new THREE.Vector3 0, 0, 1
 
-window.socket = io('http://localhost:8002')
-socket.on 'comm', (data)->
-    console.log data
-    socket.emit 'comm', 'ACK'
-
 # Prepare scene
 window.setup = ()->
     planet = Planet.create('Earth', KM(6378))
@@ -43,11 +35,10 @@ window.setup = ()->
     ship.orbit planet, 4*LEO
     ship.captureCamera camera
     gameLoop.push ship.control(keyboard)
-    gameLoop.push ship.simulate()
+    # gameLoop.push ship.simulate()
     gameLoop.push ship.track(camera)
     gameLoop.push camera.control(keyboard, renderer)
-
-
+    
     scene.add new THREE.ArrowHelper Z, NULLVECTOR, KM(100000), 0xffffff
     # refShip = new Ship M(80)
     # scene.add refShip
@@ -58,18 +49,33 @@ window.setup = ()->
     
     window.ship = ship
 
-window.run = ()->
-    render()
-    animate()
-
-render = ()->    
-    renderer.render scene, camera
 
 animate = ()->
-    # cameraControls.update();
+    renderer.render scene, camera
     for f in gameLoop
         f()
-    requestAnimationFrame run
+    requestAnimationFrame animate
 
+window.start = ()->
+    setup()
+    incomingPos = new THREE.Vector3
+    incomingVel = new THREE.Vector3
+    window.socket = io('http://localhost:8002')
+    socket.on 'comm', (data)->
+        console.log data
+        socket.emit 'comm', 'ACK'
+    socket.on 'simulation', (data)->
+        for uuid, shipState of data
+            if uuid == ship.uuid
+                ship.updateState shipState.r, shipState.v
+
+    socket.on 'connect', ()->
+        socket.emit 'phasein',
+            uuid: ship.uuid
+            r: ship.mksPosition.toArray()
+            v: ship.mksVelocity.toArray()
+            mu: ship.boi.mu
+
+    animate()
 
 document.body.appendChild renderer.domElement
