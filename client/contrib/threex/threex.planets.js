@@ -48,9 +48,13 @@ THREEx.Planets.createEarth	= function(radius){
 		bumpScale	: 0.05,
 		specularMap	: THREE.ImageUtils.loadTexture(THREEx.Planets.baseURL+'images/earthspec1k.jpg'),
 		specular	: new THREE.Color('grey'),
+		wireframe: true
 	})
 	var mesh	= new THREE.Mesh(geometry, material)
 	mesh.mksMass = 5.972e24
+    mesh.LO = 160000
+    mesh.planetId = 'earth'
+    mesh.rotation.x = Math.PI/2
 	return mesh	
 }
 

@@ -1,7 +1,7 @@
 {
-  "name": "staticfile-basics",
+  "name": "exo-client",
   "version": "0.0.0",
-  "description": "Basics to use grunt as staticfile manager for Django projects",
+  "description": "Space exploration game",
   "dependencies": {
     "grunt-contrib-coffee": "^0.10.1",
     "grunt": "^0.4.4",
