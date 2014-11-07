@@ -60,7 +60,7 @@ createCraft = ()->
             craft = new Craft(data, planet)
             addCraft craft
             controlCraft craft
-            # focusObject craft
+            focusObject craft
 
 # Returns existing craft
 getCraft = ()->
@@ -73,7 +73,7 @@ getCraft = ()->
             craft = new Craft(data, planet)
             addCraft craft
             controlCraft craft
-            # focusObject craft
+            focusObject craft
             foundCraft = craft
     return foundCraft
 
@@ -94,7 +94,7 @@ gameLoop.push ()-> craftController()
 
 controlCraft = (craft)->
     controlledCraft = craft
-    craftController = craft.control(keyboard)
+    craftController = craft.control(keyboard, socket)
 
 
 # Photography
@@ -147,7 +147,7 @@ window.start = ()->
     window.socket = io('http://localhost:8001')
     createWorld()
     animate()
-    socket.on 'connect', ()->
+    socket.on 'ready', ()->
         if not getCraft()
             createCraft()
 

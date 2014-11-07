@@ -4,7 +4,7 @@ uiCage = (size, color)->
     mesh.material = new THREE.MeshBasicMaterial color: color, wireframe: true, depthTest: true
     return mesh
 
-ELLIPSE_POINTS = 100
+ELLIPSE_POINTS = 500
 _inclineAxis = new THREE.Vector3
 
 class Orbit extends THREE.Object3D

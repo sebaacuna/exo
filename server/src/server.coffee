@@ -40,7 +40,16 @@ simulation = new sim.Simulation()
 simulation.run()
 server.listen 8001
 console.log "Start listening"
+
+io.on 'connection', (socket)->
+  console.log 'connected'
+  socket.on "control", (craftId)->
+    console.log craftId, "under control"
+    simulation.crafts[craftId].listen socket
+
+  socket.emit "ready", socket.id
+
 broadcast = ()-> io.emit 'planet-earth-crafts', simulation.crafts
 setInterval broadcast, 1000/60.0
 report = ()-> console.log simulation.crafts
-setInterval report, 1000
+setInterval report, 5000

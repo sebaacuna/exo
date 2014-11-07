@@ -4,40 +4,36 @@ class Craft extends THREE.Object3D
     constructor: (data, @planet)->
         super
         @craftId = data.craftId
+        @channel = "craft-#{@craftId}"
         size = M(30)
 
         @mksMass = 1000
 
         @mesh = new THREE.Mesh
         @mesh.geometry = new THREE.CylinderGeometry size*0.25, size*0.5, size
+        # @mesh.geometry.applyMatrix alignmentMatrix
         @mesh.material = new THREE.MeshBasicMaterial color: 0x006600
         @mesh.matrixAutoUpdate = true
-        @mesh.up = X.clone()
         @add @mesh
 
         @mksPosition = new THREE.Vector3
         @mksVelocity = new THREE.Vector3
-        
-        # alignAxis = new THREE.Vector3
-        # alignAxis.crossVectors(@mesh.up, @mksVelocity)
-        # alignAxis.normalize()
-        # @mesh.rotateOnAxis alignAxis, @mesh.up.angleTo(@mksVelocity)
 
         @mesh.rollAxis = @mesh.up
-        @mesh.yawAxis = new THREE.Vector3 1,0,0
+        @mesh.yawAxis = X
         if 0== @mesh.yawAxis.angleTo @mesh.rollAxis
-            @mesh.yawAxis = new THREE.Vector3 0,0,1
+            @mesh.yawAxis = Y
         @mesh.pitchAxis = (new THREE.Vector3).crossVectors @mesh.yawAxis, @mesh.rollAxis
         
-        @velArrow = @arrow new THREE.Vector3(KM(1000),0,0)
+        @velArrow = new THREE.ArrowHelper X, ORIGIN, KM(1000), 0x00ff00
         @add @velArrow
 
-        @accelArrow = @arrow X
+        @accelArrow = new THREE.ArrowHelper X, ORIGIN, KM(1000), 0xff0000
         @add @accelArrow
 
-        @thrustArrow = @arrow @mesh.rollAxis, 0xffffff
-        @add @thrustArrow
-        @thrust = 0
+        @thrustArrow = new THREE.ArrowHelper @mesh.rollAxis, ORIGIN, 0, 0xffffff
+        @mesh.add @thrustArrow
+        @throttle = 0
 
         @mesh.add new THREE.AxisHelper KM(1000)
 
@@ -84,7 +80,25 @@ class Craft extends THREE.Object3D
         # else
         #     @velArrow.setLength @mksVelocity.length()
 
-    control: (keyboard)->
+    control: (keyboard, socket)->
+        socket.emit "control", @craftId
+        thrustStart = (event)=>
+            if event.keyCode == 32 #space
+                setThrust 1.0
+        thrustEnd = (event)=>
+            if event.keyCode == 32 #space
+                setThrust 0.0
+        
+        setThrust = (throttle)=>
+            if throttle != @throttle
+                @throttle = throttle
+                v = @thrustVector()
+                console.log "Throttle", throttle, v
+                socket.emit "#{@channel}-thrust", v.toArray()
+
+        document.addEventListener("keydown", thrustStart, false)
+        document.addEventListener("keyup", thrustEnd, false)
+
         ()=>
             if keyboard.pressed("w")
                 @mesh.rotateOnAxis @mesh.pitchAxis, -0.05
@@ -98,30 +112,20 @@ class Craft extends THREE.Object3D
                 @mesh.rotateOnAxis @mesh.rollAxis, 0.05
             if keyboard.pressed("e")
                 @mesh.rotateOnAxis @mesh.rollAxis, -0.05
-            if keyboard.pressed "space"
-                @thrust = 1
-                @thrustArrow.visible = true
-            else
-                @thrust = 0
-                @thrustArrow.visible = false
 
-    arrow: (vector, color=0xff0000)->
-        direction = vector.clone().normalize()
-        new THREE.ArrowHelper direction, @position, vector.length(), color
-        
-    thrustCalc: (x,v,dt)->
-        if @thrust
-            F = 200000 #Thrust [N]
-            thrustVector = @mesh.rollAxis.clone()
-            thrustVector.normalize()
-            thrustVector.applyMatrix4 @mesh.matrix
-
-            @thrustArrow.setDirection thrustVector
-            @thrustArrow.setLength KM(1)
-
-            thrustVector.multiplyScalar F/@mksMass
-            return thrustVector
-        else
+    thrustVector: ()->
+        if @throttle == 0
+            @thrustArrow.setLength 0
             return ORIGIN
+        else
+            F = 200000 #Thrust [N]
+            vector = @mesh.rollAxis.clone()
+
+            @thrustArrow.setDirection vector
+            @thrustArrow.setLength KM(1000)*@throttle
+            
+            vector.applyMatrix4 @mesh.matrix
+            vector.multiplyScalar F/@mksMass
+            return vector
 
 window.Craft = Craft

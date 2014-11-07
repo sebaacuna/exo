@@ -90,7 +90,8 @@
         var craft;
         craft = new Craft(data, planet);
         addCraft(craft);
-        return controlCraft(craft);
+        controlCraft(craft);
+        return focusObject(craft);
       }
     });
   };
@@ -107,6 +108,7 @@
         craft = new Craft(data, planet);
         addCraft(craft);
         controlCraft(craft);
+        focusObject(craft);
         return foundCraft = craft;
       }
     });
@@ -134,7 +136,7 @@
   controlCraft = function(craft) {
     var controlledCraft;
     controlledCraft = craft;
-    return craftController = craft.control(keyboard);
+    return craftController = craft.control(keyboard, socket);
   };
 
   cameraController = function() {};
@@ -198,7 +200,7 @@
     window.socket = io('http://localhost:8001');
     createWorld();
     animate();
-    return socket.on('connect', function() {
+    return socket.on('ready', function() {
       if (!getCraft()) {
         return createCraft();
       }
@@ -224,6 +226,7 @@
       this.planet = planet;
       Craft.__super__.constructor.apply(this, arguments);
       this.craftId = data.craftId;
+      this.channel = "craft-" + this.craftId;
       size = M(30);
       this.mksMass = 1000;
       this.mesh = new THREE.Mesh;
@@ -232,23 +235,22 @@
         color: 0x006600
       });
       this.mesh.matrixAutoUpdate = true;
-      this.mesh.up = X.clone();
       this.add(this.mesh);
       this.mksPosition = new THREE.Vector3;
       this.mksVelocity = new THREE.Vector3;
       this.mesh.rollAxis = this.mesh.up;
-      this.mesh.yawAxis = new THREE.Vector3(1, 0, 0);
+      this.mesh.yawAxis = X;
       if (0 === this.mesh.yawAxis.angleTo(this.mesh.rollAxis)) {
-        this.mesh.yawAxis = new THREE.Vector3(0, 0, 1);
+        this.mesh.yawAxis = Y;
       }
       this.mesh.pitchAxis = (new THREE.Vector3).crossVectors(this.mesh.yawAxis, this.mesh.rollAxis);
-      this.velArrow = this.arrow(new THREE.Vector3(KM(1000), 0, 0));
+      this.velArrow = new THREE.ArrowHelper(X, ORIGIN, KM(1000), 0x00ff00);
       this.add(this.velArrow);
-      this.accelArrow = this.arrow(X);
+      this.accelArrow = new THREE.ArrowHelper(X, ORIGIN, KM(1000), 0xff0000);
       this.add(this.accelArrow);
-      this.thrustArrow = this.arrow(this.mesh.rollAxis, 0xffffff);
-      this.add(this.thrustArrow);
-      this.thrust = 0;
+      this.thrustArrow = new THREE.ArrowHelper(this.mesh.rollAxis, ORIGIN, 0, 0xffffff);
+      this.mesh.add(this.thrustArrow);
+      this.throttle = 0;
       this.mesh.add(new THREE.AxisHelper(KM(1000)));
       this.consoleElems = {};
       this.orbit = new Orbit(this.planet);
@@ -273,7 +275,36 @@
       return (_ref2 = this.accelArrow) != null ? _ref2.setDirection($acceleration.normalize()) : void 0;
     };
 
-    Craft.prototype.control = function(keyboard) {
+    Craft.prototype.control = function(keyboard, socket) {
+      var setThrust, thrustEnd, thrustStart;
+      socket.emit("control", this.craftId);
+      thrustStart = (function(_this) {
+        return function(event) {
+          if (event.keyCode === 32) {
+            return setThrust(1.0);
+          }
+        };
+      })(this);
+      thrustEnd = (function(_this) {
+        return function(event) {
+          if (event.keyCode === 32) {
+            return setThrust(0.0);
+          }
+        };
+      })(this);
+      setThrust = (function(_this) {
+        return function(throttle) {
+          var v;
+          if (throttle !== _this.throttle) {
+            _this.throttle = throttle;
+            v = _this.thrustVector();
+            console.log("Throttle", throttle, v);
+            return socket.emit("" + _this.channel + "-thrust", v.toArray());
+          }
+        };
+      })(this);
+      document.addEventListener("keydown", thrustStart, false);
+      document.addEventListener("keyup", thrustEnd, false);
       return (function(_this) {
         return function() {
           if (keyboard.pressed("w")) {
@@ -292,41 +323,25 @@
             _this.mesh.rotateOnAxis(_this.mesh.rollAxis, 0.05);
           }
           if (keyboard.pressed("e")) {
-            _this.mesh.rotateOnAxis(_this.mesh.rollAxis, -0.05);
-          }
-          if (keyboard.pressed("space")) {
-            _this.thrust = 1;
-            return _this.thrustArrow.visible = true;
-          } else {
-            _this.thrust = 0;
-            return _this.thrustArrow.visible = false;
+            return _this.mesh.rotateOnAxis(_this.mesh.rollAxis, -0.05);
           }
         };
       })(this);
     };
 
-    Craft.prototype.arrow = function(vector, color) {
-      var direction;
-      if (color == null) {
-        color = 0xff0000;
-      }
-      direction = vector.clone().normalize();
-      return new THREE.ArrowHelper(direction, this.position, vector.length(), color);
-    };
-
-    Craft.prototype.thrustCalc = function(x, v, dt) {
-      var F, thrustVector;
-      if (this.thrust) {
-        F = 200000;
-        thrustVector = this.mesh.rollAxis.clone();
-        thrustVector.normalize();
-        thrustVector.applyMatrix4(this.mesh.matrix);
-        this.thrustArrow.setDirection(thrustVector);
-        this.thrustArrow.setLength(KM(1));
-        thrustVector.multiplyScalar(F / this.mksMass);
-        return thrustVector;
-      } else {
+    Craft.prototype.thrustVector = function() {
+      var F, vector;
+      if (this.throttle === 0) {
+        this.thrustArrow.setLength(0);
         return ORIGIN;
+      } else {
+        F = 200000;
+        vector = this.mesh.rollAxis.clone();
+        this.thrustArrow.setDirection(vector);
+        this.thrustArrow.setLength(KM(1000) * this.throttle);
+        vector.applyMatrix4(this.mesh.matrix);
+        vector.multiplyScalar(F / this.mksMass);
+        return vector;
       }
     };
 
@@ -355,7 +370,7 @@
     return mesh;
   };
 
-  ELLIPSE_POINTS = 100;
+  ELLIPSE_POINTS = 500;
 
   _inclineAxis = new THREE.Vector3;
 

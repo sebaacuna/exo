@@ -6,6 +6,13 @@ class Craft
     @mu = state.mu
     @r = new THREE.Vector3().fromArray state.r
     @v = new THREE.Vector3().fromArray state.v
+    @thrustVector = new THREE.Vector3()
+
+  listen: (socket)->
+    console.log "listening #{@craftId}"
+    socket.on "craft-#{@craftId}-thrust", (thrustVector)=>
+      console.log "thrusting"
+      @thrustVector.fromArray thrustVector
 
   energy: ()->
     0.5*@v.lengthSq()-@mu/@r.length()
@@ -23,6 +30,7 @@ class Craft
       a = r.clone().normalize()
       magnitude = @mu/r2
       a.multiplyScalar -magnitude
+      a.add @thrustVector
 
   simulate: (dt)->
     sim.rk4 @r, @v, @a(), dt
