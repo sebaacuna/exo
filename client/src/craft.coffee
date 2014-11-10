@@ -11,7 +11,6 @@ class Craft extends THREE.Object3D
 
         @mesh = new THREE.Mesh
         @mesh.geometry = new THREE.CylinderGeometry size*0.25, size*0.5, size
-        # @mesh.geometry.applyMatrix alignmentMatrix
         @mesh.material = new THREE.MeshBasicMaterial color: 0x006600
         @mesh.matrixAutoUpdate = true
         @add @mesh
@@ -44,12 +43,7 @@ class Craft extends THREE.Object3D
 
         window.orbit = @orbit
 
-    # console: (key, value)->
-    #     if not @consoleElems[key]
-    #         @consoleElems[key] = document.getElementById("console-#{key}") or -1
-    #     if @consoleElems[key] != -1
-    #         @consoleElems[key].innerHTML = value
-    
+
     updateState: (state)->
         oldV = @mksVelocity.clone()
         @mksPosition.copy state.r
@@ -58,29 +52,12 @@ class Craft extends THREE.Object3D
         
         setGameVector @mksPosition, @position
         $acceleration.subVectors oldV, @mksVelocity
-
-        # @console 'velocity',  Math.floor(@mksVelocity.length())
-        # @console 'acceleration',  Math.floor($acceleration.length()*1000)/10.0
         
         @velArrow?.setDirection @mksVelocity.normalize()
         @accelArrow?.setLength $acceleration.length()
         @accelArrow?.setDirection $acceleration.normalize()
 
-        # Feedback
-        # @console 'orbital-energy', Math.floor(@orbitalEnergy*10000)/10000
-        # @console 'angular-moment', Math.floor(@mksAngMom.length()*10000)/10000
-        # @console 'r', @mksPosition.length()
-
-        # localPos = camera.position.clone()
-        # camera.localToWorld(localPos)
-        # far = (localPos.distanceTo(@position) > KM(10))
-        # @orbit?.visible = far
-        # if far
-        #     @velArrow.setLength @mksVelocity.length()
-        # else
-        #     @velArrow.setLength @mksVelocity.length()
-
-    control: (keyboard, socket)->
+    controller: (keyboard, socket)->
         socket.emit "control", @craftId
         thrustStart = (event)=>
             if event.keyCode == 32 #space

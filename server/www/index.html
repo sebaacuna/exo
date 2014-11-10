@@ -29,7 +29,7 @@
             </ul>
             <hr/>
             <ul ng-repeat="craft in crafts">
-                <li>{{ craft.craftId }}</li>
+                <li><a ng-click="controlCraft(craft)" href="#">{{ craft.craftId }}</a></li>
             </ul>
 
         </div>

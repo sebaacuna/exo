@@ -15,6 +15,7 @@ class AdminController
             for craftId, craft of crafts
                 $scope.crafts.push craft
             $scope.$digest()
+            console.log $scope.crafts
 
 
 exoApp = angular.module "exo", []

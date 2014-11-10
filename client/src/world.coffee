@@ -32,8 +32,13 @@ class World
         @renderer.shadowMapEnabled   = true
         @viewport.append @renderer.domElement
 
+    render: ()->
+        @renderer.render @scene, @camera
+
     createCamera: ()->
         @camera = new THREE.PerspectiveCamera 90, @viewport.width()/@viewport.height(), M(1), KM(10000000)
+        controls = new THREE.OrbitControls @camera
+        controls.addEventListener 'change', ()=>@render()
         @camera.target = new THREE.Object3D
         $viewport = @viewport
         @camera.setFrame = (frameSize)->
@@ -50,7 +55,7 @@ class World
 
     start: ()->
         @tick = ()=>
-            @renderer.render @scene, @camera
+            @render()
             for f in @gameLoop
                 f()
             requestAnimationFrame @tick
@@ -75,10 +80,10 @@ class World
         $.get "/crafts", (crafts, textStatus, $xhr)=>
             for craftId, craftData of crafts
                 @addCraft new Craft(craftData, @boi)
-            callback crafts
+            callback @crafts
 
     controlCraft: (craft)->
-        @craftController = craft.control @keyboard, @socket
+        @craftController = craft.controller @keyboard, @socket
         @focusObject craft
 
     # Adds a craft to the client's world

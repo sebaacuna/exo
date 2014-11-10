@@ -113,7 +113,7 @@
       return (_ref2 = this.accelArrow) != null ? _ref2.setDirection($acceleration.normalize()) : void 0;
     };
 
-    Craft.prototype.control = function(keyboard, socket) {
+    Craft.prototype.controller = function(keyboard, socket) {
       var setThrust, thrustEnd, thrustStart;
       socket.emit("control", this.craftId);
       thrustStart = (function(_this) {
@@ -213,7 +213,8 @@
           craft = crafts[craftId];
           $scope.crafts.push(craft);
         }
-        return $scope.$digest();
+        $scope.$digest();
+        return console.log($scope.crafts);
       });
     }
 
@@ -396,9 +397,19 @@
       return this.viewport.append(this.renderer.domElement);
     };
 
+    World.prototype.render = function() {
+      return this.renderer.render(this.scene, this.camera);
+    };
+
     World.prototype.createCamera = function() {
-      var $viewport;
+      var $viewport, controls;
       this.camera = new THREE.PerspectiveCamera(90, this.viewport.width() / this.viewport.height(), M(1), KM(10000000));
+      controls = new THREE.OrbitControls(this.camera);
+      controls.addEventListener('change', (function(_this) {
+        return function() {
+          return _this.render();
+        };
+      })(this));
       this.camera.target = new THREE.Object3D;
       $viewport = this.viewport;
       return this.camera.setFrame = function(frameSize) {
@@ -426,7 +437,7 @@
       this.tick = (function(_this) {
         return function() {
           var f, _i, _len, _ref;
-          _this.renderer.render(_this.scene, _this.camera);
+          _this.render();
           _ref = _this.gameLoop;
           for (_i = 0, _len = _ref.length; _i < _len; _i++) {
             f = _ref[_i];
@@ -466,13 +477,13 @@
             craftData = crafts[craftId];
             _this.addCraft(new Craft(craftData, _this.boi));
           }
-          return callback(crafts);
+          return callback(_this.crafts);
         };
       })(this));
     };
 
     World.prototype.controlCraft = function(craft) {
-      this.craftController = craft.control(this.keyboard, this.socket);
+      this.craftController = craft.controller(this.keyboard, this.socket);
       return this.focusObject(craft);
     };
 
