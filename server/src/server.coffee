@@ -56,7 +56,7 @@ io.on 'connection', (socket)->
     socket.sessionID = sessionID
     socket.emit "ready", socket.sessionID
 
-broadcast = ()-> io.emit 'planet-earth-crafts', simulation.crafts
+broadcast = ()-> io.emit 'boi-earth-crafts', simulation.crafts
 setInterval broadcast, 1000/60.0
 report = ()->
   for craftId, craft of simulation.crafts

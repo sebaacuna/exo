@@ -1,5 +1,5 @@
 (function() {
-  var $viewport, SCALE, animate, cameraController, gameLoop, renderer;
+  var SCALE;
 
   SCALE = 1;
 
@@ -19,8 +19,6 @@
     return gV.copy(mksV).multiplyScalar(SCALE);
   };
 
-  $viewport = $(".viewport");
-
   window.ORIGIN = new THREE.Vector3;
 
   window.X = new THREE.Vector3(1, 0, 0);
@@ -29,117 +27,25 @@
 
   window.Z = new THREE.Vector3(0, 0, 1);
 
-  window.scene = new THREE.Scene();
-
-  window.camera = new THREE.PerspectiveCamera(90, $viewport.width() / $viewport.height(), M(1), KM(10000000));
-
-  window.keyboard = new THREEx.KeyboardState;
-
-  camera.setFrame = function(frameSize) {
-    var ratio;
-    ratio = $viewport.width() / $viewport.height();
-    this.left = -frameSize * ratio;
-    this.right = frameSize * ratio;
-    this.top = frameSize * ratio;
-    this.bottom = -frameSize * ratio;
-    return this.updateProjectionMatrix();
-  };
-
-  camera.target = new THREE.Object3D;
-
-  renderer = new THREE.WebGLRenderer({
-    antialias: true,
-    logarithmicDepthBuffer: true
-  });
-
-  renderer.setSize($viewport.width(), $viewport.height());
-
-  renderer.shadowMapEnabled = true;
-
-  scene.add(new THREE.AmbientLight(0x888888));
-
-  gameLoop = [];
-
-  scene.add(new THREE.AxisHelper(KM(10000)));
-
-  window.craftController = function() {};
-
-  gameLoop.push(function() {
-    return window.craftController();
-  });
-
-  cameraController = function() {};
-
-  gameLoop.push(function() {
-    return cameraController();
-  });
-
-  window.focusObject = function(object) {
-    var $pitchAxis, $yawAxis;
-    object.add(camera.target);
-    camera.target.rotation.x = Math.PI / 2;
-    camera.target.add(camera);
-    camera.position.z = KM(10000);
-    $pitchAxis = new THREE.Vector3;
-    $yawAxis = new THREE.Vector3;
-    $yawAxis.copy(object.up).normalize();
-    return cameraController = (function(_this) {
-      return function() {
-        if (keyboard.pressed("shift")) {
-          if (keyboard.pressed("shift+up")) {
-            camera.position.z = Math.max(camera.position.z / 2.0, M(10));
-          }
-          if (keyboard.pressed("shift+down")) {
-            camera.position.z = Math.min(camera.position.z * 2, KM(100000));
-          }
-          if (camera.setFrame) {
-            return camera.setFrame(camera.position.z);
-          }
-        } else {
-          $pitchAxis.crossVectors(object.up, camera.position);
-          $pitchAxis.normalize();
-          if (keyboard.pressed("left")) {
-            camera.target.rotateOnAxis($yawAxis, -0.05);
-          }
-          if (keyboard.pressed("right")) {
-            camera.target.rotateOnAxis($yawAxis, +0.05);
-          }
-          if (keyboard.pressed("up")) {
-            camera.target.rotateOnAxis($pitchAxis, -0.05);
-          }
-          if (keyboard.pressed("down")) {
-            return camera.target.rotateOnAxis($pitchAxis, +0.05);
-          }
-        }
-      };
-    })(this);
-  };
-
-  animate = function() {
-    var f, _i, _len;
-    renderer.render(scene, camera);
-    for (_i = 0, _len = gameLoop.length; _i < _len; _i++) {
-      f = gameLoop[_i];
-      f();
-    }
-    return requestAnimationFrame(animate);
-  };
-
   window.start = function() {
-    window.socket = io('http://localhost:8001');
-    window.world = new World(window);
-    animate();
+    var socket;
+    socket = io('http://localhost:8001');
+    window.world = new World($(".viewport"), socket);
+    socket.on("boi-" + this.world.boi.planetId + "-crafts", (function(_this) {
+      return function(craftStates) {
+        return world.updateCrafts(craftStates);
+      };
+    })(this));
     return $.get("/signin", function(data) {
       console.log("Session ID:", data);
       window.sessionID = data;
       socket.emit("identify", sessionID);
       return socket.on('ready', function(sessionID) {
-        return console.log("ready", sessionID);
+        console.log("ready", sessionID);
+        return world.start();
       });
     });
   };
-
-  $viewport.append(renderer.domElement);
 
 }).call(this);
 
@@ -298,7 +204,7 @@
         });
       };
       $scope.controlCraft = function(craft) {
-        return world.controlCraft;
+        return world.controlCraft(craft);
       };
       world.getCrafts(function(crafts) {
         var craft, craftId;
@@ -448,28 +354,93 @@
   var World;
 
   World = (function() {
-    function World(game) {
-      this.game = game;
-      this.planet = new Planet('Earth', KM(6378));
+    function World(viewport, socket) {
+      this.viewport = viewport;
+      this.socket = socket;
       this.crafts = {};
-      this.game.scene.add(this.planet);
-      this.game.socket.on("planet-" + this.planet.planetId + "-crafts", (function(_this) {
-        return function(craftStates) {
-          var id, state, _ref, _results;
-          _results = [];
-          for (id in craftStates) {
-            state = craftStates[id];
-            _results.push((_ref = _this.crafts[id]) != null ? _ref.updateState(state) : void 0);
-          }
-          return _results;
+      this.gameLoop = [];
+      this.boi = new Planet('Earth', KM(6378));
+      this.createScene();
+      this.createRenderer();
+      this.createCamera();
+      this.keyboard = new THREEx.KeyboardState;
+      this.craftController = function() {};
+      this.gameLoop.push((function(_this) {
+        return function() {
+          return _this.craftController();
         };
       })(this));
-      this.game.focusObject(this.planet);
+      this.cameraController = function() {};
+      this.gameLoop.push((function(_this) {
+        return function() {
+          return _this.cameraController();
+        };
+      })(this));
+      this.focusObject(this.boi);
     }
+
+    World.prototype.createScene = function() {
+      this.scene = new THREE.Scene();
+      this.scene.add(new THREE.AmbientLight(0x888888));
+      this.scene.add(new THREE.AxisHelper(KM(10000)));
+      return this.scene.add(this.boi);
+    };
+
+    World.prototype.createRenderer = function() {
+      this.renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        logarithmicDepthBuffer: true
+      });
+      this.renderer.setSize(this.viewport.width(), this.viewport.height());
+      this.renderer.shadowMapEnabled = true;
+      return this.viewport.append(this.renderer.domElement);
+    };
+
+    World.prototype.createCamera = function() {
+      var $viewport;
+      this.camera = new THREE.PerspectiveCamera(90, this.viewport.width() / this.viewport.height(), M(1), KM(10000000));
+      this.camera.target = new THREE.Object3D;
+      $viewport = this.viewport;
+      return this.camera.setFrame = function(frameSize) {
+        var ratio;
+        ratio = $viewport.width() / $viewport.height();
+        this.left = -frameSize * ratio;
+        this.right = frameSize * ratio;
+        this.top = frameSize * ratio;
+        this.bottom = -frameSize * ratio;
+        return this.updateProjectionMatrix();
+      };
+    };
+
+    World.prototype.updateCrafts = function(craftStates) {
+      var id, state, _ref, _results;
+      _results = [];
+      for (id in craftStates) {
+        state = craftStates[id];
+        _results.push((_ref = this.crafts[id]) != null ? _ref.updateState(state) : void 0);
+      }
+      return _results;
+    };
+
+    World.prototype.start = function() {
+      this.tick = (function(_this) {
+        return function() {
+          var f, _i, _len, _ref;
+          _this.renderer.render(_this.scene, _this.camera);
+          _ref = _this.gameLoop;
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            f = _ref[_i];
+            f();
+          }
+          return requestAnimationFrame(_this.tick);
+        };
+      })(this);
+      return this.tick();
+    };
 
     World.prototype.createCraft = function(callback) {
       var state;
-      state = this.planet.orbitalState(this.planet.LO * (1 + 10 * Math.random()));
+      state = this.boi.orbitalState(this.boi.LO * (1 + 10 * Math.random()));
       return $.ajax({
         type: "PUT",
         url: "/crafts",
@@ -479,7 +450,7 @@
         success: (function(_this) {
           return function(data, textStatus, $xhr) {
             var craft;
-            craft = new Craft(data, _this.planet);
+            craft = new Craft(data, _this.boi);
             _this.addCraft(craft);
             return callback(craft);
           };
@@ -493,7 +464,7 @@
           var craftData, craftId;
           for (craftId in crafts) {
             craftData = crafts[craftId];
-            _this.addCraft(new Craft(craftData, _this.planet));
+            _this.addCraft(new Craft(craftData, _this.boi));
           }
           return callback(crafts);
         };
@@ -501,13 +472,57 @@
     };
 
     World.prototype.controlCraft = function(craft) {
-      this.game.craftController = craft.control(this.game.keyboard, this.game.socket);
-      return this.game.focusObject(craft);
+      this.craftController = craft.control(this.keyboard, this.socket);
+      return this.focusObject(craft);
     };
 
     World.prototype.addCraft = function(craft) {
       this.crafts[craft.craftId] = craft;
-      return this.game.scene.add(craft);
+      return this.scene.add(craft);
+    };
+
+    World.prototype.focusObject = function(object) {
+      var $pitchAxis, $yawAxis, C;
+      C = this.camera;
+      object.add(C.target);
+      C.target.rotation.x = Math.PI / 2;
+      C.target.add(C);
+      C.position.z = KM(10000);
+      $pitchAxis = new THREE.Vector3;
+      $yawAxis = new THREE.Vector3;
+      $yawAxis.copy(object.up).normalize();
+      return this.cameraController = (function(_this) {
+        return function() {
+          var K;
+          K = _this.keyboard;
+          if (K.pressed("shift")) {
+            if (K.pressed("shift+up")) {
+              C.position.z = Math.max(C.position.z / 2.0, M(10));
+            }
+            if (K.pressed("shift+down")) {
+              C.position.z = Math.min(C.position.z * 2, KM(100000));
+            }
+            if (C.setFrame) {
+              return C.setFrame(C.position.z);
+            }
+          } else {
+            $pitchAxis.crossVectors(object.up, C.position);
+            $pitchAxis.normalize();
+            if (K.pressed("left")) {
+              C.target.rotateOnAxis($yawAxis, -0.05);
+            }
+            if (K.pressed("right")) {
+              C.target.rotateOnAxis($yawAxis, +0.05);
+            }
+            if (K.pressed("up")) {
+              C.target.rotateOnAxis($pitchAxis, -0.05);
+            }
+            if (K.pressed("down")) {
+              return C.target.rotateOnAxis($pitchAxis, +0.05);
+            }
+          }
+        };
+      })(this);
     };
 
     return World;

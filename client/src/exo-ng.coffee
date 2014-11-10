@@ -7,7 +7,7 @@ class AdminController
                 $scope.$digest()
         
         $scope.controlCraft = (craft)->
-            world.controlCraft 
+            world.controlCraft craft
 
 
         world.getCrafts (crafts)->
