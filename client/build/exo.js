@@ -1,5 +1,5 @@
 (function() {
-  var SCALE, addCraft, animate, cameraController, controlCraft, craftController, createCraft, focusObject, gameLoop, getCraft, keyboard, renderer;
+  var $viewport, SCALE, animate, cameraController, gameLoop, renderer;
 
   SCALE = 1;
 
@@ -19,6 +19,8 @@
     return gV.copy(mksV).multiplyScalar(SCALE);
   };
 
+  $viewport = $(".viewport");
+
   window.ORIGIN = new THREE.Vector3;
 
   window.X = new THREE.Vector3(1, 0, 0);
@@ -29,11 +31,13 @@
 
   window.scene = new THREE.Scene();
 
-  window.camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, M(1), KM(10000000));
+  window.camera = new THREE.PerspectiveCamera(90, $viewport.width() / $viewport.height(), M(1), KM(10000000));
+
+  window.keyboard = new THREEx.KeyboardState;
 
   camera.setFrame = function(frameSize) {
     var ratio;
-    ratio = window.innerWidth / window.innerHeight;
+    ratio = $viewport.width() / $viewport.height();
     this.left = -frameSize * ratio;
     this.right = frameSize * ratio;
     this.top = frameSize * ratio;
@@ -48,11 +52,9 @@
     logarithmicDepthBuffer: true
   });
 
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize($viewport.width(), $viewport.height());
 
   renderer.shadowMapEnabled = true;
-
-  keyboard = new THREEx.KeyboardState;
 
   scene.add(new THREE.AmbientLight(0x888888));
 
@@ -60,84 +62,11 @@
 
   scene.add(new THREE.AxisHelper(KM(10000)));
 
-  window.createWorld = function() {
-    window.planet = new Planet('Earth', KM(6378));
-    window.crafts = {};
-    window.controlledCraft = null;
-    scene.add(planet);
-    socket.on("planet-" + planet.planetId + "-crafts", function(craftStates) {
-      var id, state, _ref, _results;
-      _results = [];
-      for (id in craftStates) {
-        state = craftStates[id];
-        _results.push((_ref = crafts[id]) != null ? _ref.updateState(state) : void 0);
-      }
-      return _results;
-    });
-    return focusObject(planet);
-  };
-
-  createCraft = function() {
-    var state;
-    state = planet.orbitalState(planet.LO);
-    return $.ajax({
-      type: "PUT",
-      url: "/craft",
-      data: JSON.stringify(state),
-      processData: false,
-      contentType: 'application/json; charset=utf-8',
-      success: function(data, textStatus, $xhr) {
-        var craft;
-        craft = new Craft(data, planet);
-        addCraft(craft);
-        controlCraft(craft);
-        return focusObject(craft);
-      }
-    });
-  };
-
-  getCraft = function() {
-    var foundCraft;
-    foundCraft = null;
-    $.ajax({
-      type: "GET",
-      url: "/craft",
-      async: false,
-      success: function(data, textStatus, $xhr) {
-        var craft;
-        craft = new Craft(data, planet);
-        addCraft(craft);
-        controlCraft(craft);
-        focusObject(craft);
-        return foundCraft = craft;
-      }
-    });
-    return foundCraft;
-  };
-
-  addCraft = function(craft) {
-    crafts[craft.craftId] = craft;
-    scene.add(craft);
-    socket.on('craft-#{craft.id}-state', function(state) {
-      return crafts[craft.craftId].updateState(state);
-    });
-    return socket.on("craft-" + craft.id + "-destroy", function() {
-      socket.off('craft-#{craft.id}-state');
-      return delete crafts[craft.craftId];
-    });
-  };
-
-  craftController = function() {};
+  window.craftController = function() {};
 
   gameLoop.push(function() {
-    return craftController();
+    return window.craftController();
   });
-
-  controlCraft = function(craft) {
-    var controlledCraft;
-    controlledCraft = craft;
-    return craftController = craft.control(keyboard, socket);
-  };
 
   cameraController = function() {};
 
@@ -145,7 +74,7 @@
     return cameraController();
   });
 
-  focusObject = function(object) {
+  window.focusObject = function(object) {
     var $pitchAxis, $yawAxis;
     object.add(camera.target);
     camera.target.rotation.x = Math.PI / 2;
@@ -198,16 +127,19 @@
 
   window.start = function() {
     window.socket = io('http://localhost:8001');
-    createWorld();
+    window.world = new World(window);
     animate();
-    return socket.on('ready', function() {
-      if (!getCraft()) {
-        return createCraft();
-      }
+    return $.get("/signin", function(data) {
+      console.log("Session ID:", data);
+      window.sessionID = data;
+      socket.emit("identify", sessionID);
+      return socket.on('ready', function(sessionID) {
+        return console.log("ready", sessionID);
+      });
     });
   };
 
-  document.body.appendChild(renderer.domElement);
+  $viewport.append(renderer.domElement);
 
 }).call(this);
 
@@ -354,6 +286,42 @@
 }).call(this);
 
 (function() {
+  var AdminController, exoApp;
+
+  AdminController = (function() {
+    function AdminController($scope, $http) {
+      $scope.crafts = [];
+      $scope.createCraft = function() {
+        return world.createCraft(function(craft) {
+          $scope.crafts.push(craft);
+          return $scope.$digest();
+        });
+      };
+      $scope.controlCraft = function(craft) {
+        return world.controlCraft;
+      };
+      world.getCrafts(function(crafts) {
+        var craft, craftId;
+        $scope.crafts = [];
+        for (craftId in crafts) {
+          craft = crafts[craftId];
+          $scope.crafts.push(craft);
+        }
+        return $scope.$digest();
+      });
+    }
+
+    return AdminController;
+
+  })();
+
+  exoApp = angular.module("exo", []);
+
+  exoApp.controller("AdminController", AdminController);
+
+}).call(this);
+
+(function() {
   var ELLIPSE_POINTS, Orbit, uiCage, _inclineAxis,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
@@ -473,5 +441,79 @@
   })(THREE.Object3D);
 
   window.Planet = Planet;
+
+}).call(this);
+
+(function() {
+  var World;
+
+  World = (function() {
+    function World(game) {
+      this.game = game;
+      this.planet = new Planet('Earth', KM(6378));
+      this.crafts = {};
+      this.game.scene.add(this.planet);
+      this.game.socket.on("planet-" + this.planet.planetId + "-crafts", (function(_this) {
+        return function(craftStates) {
+          var id, state, _ref, _results;
+          _results = [];
+          for (id in craftStates) {
+            state = craftStates[id];
+            _results.push((_ref = _this.crafts[id]) != null ? _ref.updateState(state) : void 0);
+          }
+          return _results;
+        };
+      })(this));
+      this.game.focusObject(this.planet);
+    }
+
+    World.prototype.createCraft = function(callback) {
+      var state;
+      state = this.planet.orbitalState(this.planet.LO * (1 + 10 * Math.random()));
+      return $.ajax({
+        type: "PUT",
+        url: "/crafts",
+        data: JSON.stringify(state),
+        processData: false,
+        contentType: 'application/json; charset=utf-8',
+        success: (function(_this) {
+          return function(data, textStatus, $xhr) {
+            var craft;
+            craft = new Craft(data, _this.planet);
+            _this.addCraft(craft);
+            return callback(craft);
+          };
+        })(this)
+      });
+    };
+
+    World.prototype.getCrafts = function(callback) {
+      return $.get("/crafts", (function(_this) {
+        return function(crafts, textStatus, $xhr) {
+          var craftData, craftId;
+          for (craftId in crafts) {
+            craftData = crafts[craftId];
+            _this.addCraft(new Craft(craftData, _this.planet));
+          }
+          return callback(crafts);
+        };
+      })(this));
+    };
+
+    World.prototype.controlCraft = function(craft) {
+      this.game.craftController = craft.control(this.game.keyboard, this.game.socket);
+      return this.game.focusObject(craft);
+    };
+
+    World.prototype.addCraft = function(craft) {
+      this.crafts[craft.craftId] = craft;
+      return this.game.scene.add(craft);
+    };
+
+    return World;
+
+  })();
+
+  window.World = World;
 
 }).call(this);

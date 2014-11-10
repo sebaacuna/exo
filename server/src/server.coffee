@@ -8,33 +8,38 @@ bodyParser = require "body-parser"
 cookieParser = require "cookie-parser"
 session = require "express-session"
 
-router = express.Router()
-craft_route = router.route("/craft")
-craft_route.get (req, res, next)->
-  if req.session.craft
-    res.status(200).json(req.session.craft).end()
-    console.log "Found craft", req.session.craft
-  else
-    res.status(404).end()
-    console.log "Craft not found"
-
-craft_route.put (req, res, next)->
-  craft = new crafts.Craft req.sessionID, req.body
-  req.session.craft = craft
-  simulation.crafts = {} #TEMP
-  simulation.crafts[req.sessionID] = craft
-  res.status(201).json(craft).end()
-  req.session.destroy() #TEMP
-  console.log "Craft created"
-  console.log craft
+craftRegistry = {}
 
 app.use bodyParser.json()
 app.use cookieParser()
 app.use session( store: new session.MemoryStore, secret: 'BLA BLA' )
-app.use router
 app.use '/', express.static 'www'
 app.use '/js', express.static "#{__dirname}/../../client/build/"
+app.use (req,res,next)->
+  if not req.session.crafts
+    req.session.crafts = {}
+  if not craftRegistry[req.sessionID]
+    craftRegistry[req.sessionID] = req.session.crafts
+  next()
 
+app.get "/signin", (req,res)->
+  console.log "Signing in", req.sessionID
+  res.send(req.sessionID).end()
+
+router = express.Router()
+craft_route = router.route("/crafts")
+craft_route.get (req, res, next)->
+  res.status(200).json(req.session.crafts).end()
+
+craft_route.put (req, res, next)->
+  n = Object.keys(req.session.crafts).length
+  craft = new crafts.Craft "#{req.sessionID}-#{n}", req.body
+  req.session.crafts[craft.craftId] = craft
+  simulation.crafts[craft.craftId] = craft
+  res.status(201).json(craft).end()
+  console.log "Craft created", craft.craftId
+
+app.use router
 
 simulation = new sim.Simulation()    
 simulation.run()
@@ -42,14 +47,18 @@ server.listen 8001
 console.log "Start listening"
 
 io.on 'connection', (socket)->
-  console.log 'connected'
   socket.on "control", (craftId)->
     console.log craftId, "under control"
     simulation.crafts[craftId].listen socket
 
-  socket.emit "ready", socket.id
+  socket.on "identify", (sessionID)->
+    console.log "Identifying", sessionID
+    socket.sessionID = sessionID
+    socket.emit "ready", socket.sessionID
 
 broadcast = ()-> io.emit 'planet-earth-crafts', simulation.crafts
 setInterval broadcast, 1000/60.0
-report = ()-> console.log simulation.crafts
+report = ()->
+  for craftId, craft of simulation.crafts
+    console.log craftId, ":", craft.de
 setInterval report, 5000

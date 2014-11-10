@@ -34,6 +34,8 @@ class Craft
 
   simulate: (dt)->
     sim.rk4 @r, @v, @a(), dt
-    @e = @energy()
+    e = @energy()
+    @de = e - @e
+    @e = e
       
 module.exports.Craft = Craft

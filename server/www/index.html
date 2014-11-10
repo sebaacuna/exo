@@ -1,27 +1,39 @@
-<html>
+<html ng-app="exo">
     <head>
         <title>EXO</title>
         <style>
             body { margin: 0; }
             canvas { width: 100%; height: 100% }
-            .console {
-                width: 100%;
-                height: 20px;
+            .sidebar {
+                width: 200px;
                 position: absolute;
-                bottom: 0;
+                top: 0;
                 left: 0;
+                bottom: 0;
                 background: #eee;
+            }
+            .viewport {
+                position: absolute;
+                width: auto;
+                left: 200px;
+                right: 0;
+                top: 0;
+                bottom: 0;
             }
         </style>
     </head>
     <body>
-        <div class="console">
-            R: <span id="console-r"></span>
-            Orbital energy: <span id="console-orbital-energy"></span>
-            Angular moment: <span id="console-angular-moment"></span>
-            Velocity: <span id="console-velocity"></span> |
-            Acceleration: <span id="console-acceleration"></span>
-            Eccentricity: <span id="console-eccentricity"></span>
+        <div class="sidebar" ng-controller="AdminController">
+            <ul>
+                <li><a ng-click="createCraft()" href="#">Create</a></li>
+            </ul>
+            <hr/>
+            <ul ng-repeat="craft in crafts">
+                <li>{{ craft.craftId }}</li>
+            </ul>
+
+        </div>
+        <div class="viewport">
         </div>
         <script src="js/lib.js"></script>
         <script src="js/exo.js"></script>

@@ -8,16 +8,17 @@ class Simulation
 
   run: ()->
     console.log 'Simulation running'
-    dt = 0.00001*TIMESCALE
+    dt = 0.0001*TIMESCALE
+    simPeriod = 50
     runLoop = ()=>
-      simulateSeconds = @clock.getDelta()
-      simulateSteps = TIMESCALE*Math.floor simulateSeconds/dt
+      simSeconds = Math.min simPeriod, @clock.getDelta()
+      simSteps = TIMESCALE*Math.floor simSeconds/dt
       count = 0
-      while count < simulateSteps
+      while count < simSteps
         for id, craft of @crafts
           craft.simulate dt
         ++count
-      setTimeout runLoop, 50
+      setTimeout runLoop, simPeriod
     @clock.start()
     runLoop()
 
