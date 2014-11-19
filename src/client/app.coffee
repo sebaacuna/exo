@@ -12,7 +12,6 @@ window.X = new THREE.Vector3 1, 0, 0
 window.Y = new THREE.Vector3 0, 1, 0
 window.Z = new THREE.Vector3 0, 0, 1
 
-
 window.start = ()->     
     socket = io('http://localhost:8001')
     window.world = new World $(".viewport"), socket

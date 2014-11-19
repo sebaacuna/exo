@@ -1,0 +1,58 @@
+<html ng-app="exo">
+    <head>
+        <title>EXO</title>
+        <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+        <link href='http://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
+        <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.5.0/pure-min.css">
+        <style>
+            body { 
+                margin: 0; 
+                font-family: Roboto;
+
+            }
+            canvas { width: 100%; height: 100% }
+            .sidebar {
+                width: 200px;
+                position: absolute;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                background: #eee;
+            }
+            .viewport {
+                position: absolute;
+                width: auto;
+                left: 200px;
+                right: 0;
+                top: 0;
+                bottom: 0;
+            }
+            .crafts {
+
+            }
+        </style>
+    </head>
+    <body>
+        <div class="sidebar" ng-controller="AdminController">
+            <a class="pure-button" ng-click="createCraft()" href="#">Create</a>
+            <table class="pure-table">
+                <tbody ng-repeat="(craftId, craft) in world.crafts">
+                    <tr>
+                        <td>{{craft.name}}</td>
+                        <td><a ng-click="controlCraft(craft)" href="#">
+                            <i ng-if="craft==world.controlledCraft" class="fa fa-gamepad"></i>
+                            <i ng-if="craft!=world.controlledCraft" class="fa fa-square"></i>
+                        </a></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="viewport">
+        </div>
+        <script src="js/lib.js"></script>
+        <script src="js/exo.js"></script>
+        <script>
+            start();
+        </script>
+    </body>
+</html>

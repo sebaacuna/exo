@@ -2,16 +2,16 @@ THREE = require 'three'
 sim = require './sim'
 
 class Craft
-  constructor: (@craftId, state)->
-    @mu = state.mu
-    @r = new THREE.Vector3().fromArray state.r
-    @v = new THREE.Vector3().fromArray state.v
+  constructor: (@craftId, data)->
+    @name = data.name
+    @mu = data.mu
+    @r = new THREE.Vector3().fromArray data.r
+    @v = new THREE.Vector3().fromArray data.v
     @thrustVector = new THREE.Vector3()
 
   listen: (socket)->
     console.log "listening #{@craftId}"
     socket.on "craft-#{@craftId}-thrust", (thrustVector)=>
-      console.log "thrusting"
       @thrustVector.fromArray thrustVector
 
   energy: ()->
@@ -37,5 +37,8 @@ class Craft
     e = @energy()
     @de = e - @e
     @e = e
+
+  report: ()->
+    "#{@name} #{@de} #{@thrustVector.toArray()}"
       
 module.exports.Craft = Craft

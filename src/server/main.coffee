@@ -14,7 +14,6 @@ app.use bodyParser.json()
 app.use cookieParser()
 app.use session( store: new session.MemoryStore, secret: 'BLA BLA' )
 app.use '/', express.static 'www'
-app.use '/js', express.static "#{__dirname}/../../client/build/"
 app.use (req,res,next)->
   if not req.session.crafts
     req.session.crafts = {}
@@ -59,6 +58,7 @@ io.on 'connection', (socket)->
 broadcast = ()-> io.emit 'boi-earth-crafts', simulation.crafts
 setInterval broadcast, 1000/60.0
 report = ()->
+  console.log "------"
   for craftId, craft of simulation.crafts
-    console.log craftId, ":", craft.de
-setInterval report, 5000
+    console.log craft.report()
+setInterval report, 2000

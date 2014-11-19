@@ -1,5 +1,5 @@
 THREE = require 'three'
-TIMESCALE = 10
+TIMESCALE = 25
 
 class Simulation
   constructor: ()->

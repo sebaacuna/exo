@@ -4,6 +4,7 @@ class Planet extends THREE.Object3D
     constructor: (name, radius)->
         super
         mesh = THREEx.Planets["create#{name}"](radius)
+        mesh.castShadow = true
         @radius = radius
         @mu = mksG*mesh.mksMass
         @LO = mesh.LO

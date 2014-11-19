@@ -3,6 +3,7 @@ $acceleration = new THREE.Vector3
 class Craft extends THREE.Object3D
     constructor: (data, @planet)->
         super
+        @name = data.name
         @craftId = data.craftId
         @channel = "craft-#{@craftId}"
         size = M(30)
@@ -11,8 +12,10 @@ class Craft extends THREE.Object3D
 
         @mesh = new THREE.Mesh
         @mesh.geometry = new THREE.CylinderGeometry size*0.25, size*0.5, size
-        @mesh.material = new THREE.MeshBasicMaterial color: 0x006600
+        @mesh.material = new THREE.MeshPhongMaterial 
+            color: 0xefefef
         @mesh.matrixAutoUpdate = true
+        @mesh.receiveShadow = true
         @add @mesh
 
         @mksPosition = new THREE.Vector3
@@ -39,9 +42,8 @@ class Craft extends THREE.Object3D
         @consoleElems = {}
         
         @orbit = new Orbit @planet
+        @orbit.visible = false
         @updateState data
-
-        window.orbit = @orbit
 
 
     updateState: (state)->
@@ -95,7 +97,7 @@ class Craft extends THREE.Object3D
             @thrustArrow.setLength 0
             return ORIGIN
         else
-            F = 200000 #Thrust [N]
+            F = 2000 #Thrust [N]
             vector = @mesh.rollAxis.clone()
 
             @thrustArrow.setDirection vector
