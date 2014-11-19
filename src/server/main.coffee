@@ -42,7 +42,7 @@ app.use router
 
 simulation = new sim.Simulation()    
 simulation.run()
-server.listen 8001
+server.listen process.env.PORT
 console.log "Start listening"
 
 io.on 'connection', (socket)->
