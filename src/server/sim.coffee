@@ -24,7 +24,7 @@ class Simulation
   addCraft: (craft)->
     if craft.craftId of @crafts
       return false
-    @store.sadd "sim:crafts", @craft.key
+    @store.sadd "sim:crafts", craft.key
     @crafts[craft.craftId] = craft
 
   run: ()->

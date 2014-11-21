@@ -7,11 +7,17 @@ class AdminController
         
         $scope.controlCraft = (craft)->
             world.controlCraft craft
-            $scope.digest()
+            $scope.$digest()
 
 
         world.getCrafts (crafts)->
             $scope.$digest()
+
+        setInterval(
+            ()->
+                $scope.$digest()
+            1000
+            )
 
 
 exoApp = angular.module "exo", []

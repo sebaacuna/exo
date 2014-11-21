@@ -57,7 +57,7 @@ class World
         @camera.position.z = KM(10000)
         # @camera = new THREE.OrthographicCamera -KM(8000),KM(8000),KM(8000),-KM(8000), KM(1000), KM(10000)
         @cameraControls = new THREE.OrbitControls @camera
-        @cameraControls.zoomSpeed = 0.5
+        @cameraControls.zoomSpeed = 2
         @cameraControls.addEventListener 'change', ()=>@render()
         # @camera.target = new THREE.Object3D
         $viewport = @viewport
@@ -84,7 +84,7 @@ class World
 
     # Creates a craft on the server and adds it to the world
     createCraft: (callback)->
-        craftData = @boi.orbitalState @boi.LO*(1+10*Math.random())
+        craftData = @boi.orbitalState @boi.LO #*(1+10*Math.random())
         craftData.name = prompt "Craft name"
         $.ajax
             type: "PUT"
@@ -99,7 +99,6 @@ class World
                     callback(craft)
                 403: (data)->
                     alert(data)
-            error: ()
 
     # Gets existing crafts from server and adds them to the world
     getCrafts: (callback)->
