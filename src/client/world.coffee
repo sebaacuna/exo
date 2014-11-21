@@ -57,7 +57,7 @@ class World
         @camera.position.z = KM(10000)
         # @camera = new THREE.OrthographicCamera -KM(8000),KM(8000),KM(8000),-KM(8000), KM(1000), KM(10000)
         @cameraControls = new THREE.OrbitControls @camera
-        @cameraControls.zoomSpeed = 5
+        @cameraControls.zoomSpeed = 0.5
         @cameraControls.addEventListener 'change', ()=>@render()
         # @camera.target = new THREE.Object3D
         $viewport = @viewport
@@ -92,10 +92,14 @@ class World
             data: JSON.stringify(craftData)
             processData: false
             contentType: 'application/json; charset=utf-8'
-            success: (data, textStatus, $xhr)=>
-                craft = new Craft(data, @boi)
-                @addCraft craft
-                callback(craft)
+            statusCode: 
+                201: (data)=>
+                    craft = new Craft(data, @boi)
+                    @addCraft craft
+                    callback(craft)
+                403: (data)->
+                    alert(data)
+            error: ()
 
     # Gets existing crafts from server and adds them to the world
     getCrafts: (callback)->

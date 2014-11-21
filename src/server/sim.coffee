@@ -1,10 +1,31 @@
+async = require "async"
+crafts = require("./crafts")
 THREE = require 'three'
 TIMESCALE = 25
 
 class Simulation
-  constructor: ()->
-    @crafts = {}
+  constructor: (@store)->
     @clock = new THREE.Clock
+
+  loadCrafts: (done)->
+    @crafts = {}
+    @store.smembers "sim:crafts", (err, keys)=>
+      for key in keys
+        console.log "Will load #{key}"
+        crafts.Craft.load @store, key, (craft)=>
+          @crafts[craft.craftId] = craft
+
+      async.until(
+        ()=> keys.length == Object.keys(@crafts).length # test
+        (callback)-> setTimeout callback, 100           # repeat
+        (err)-> done()                                  # done
+      )
+
+  addCraft: (craft)->
+    if craft.craftId of @crafts
+      return false
+    @store.sadd "sim:crafts", @craft.key
+    @crafts[craft.craftId] = craft
 
   run: ()->
     console.log 'Simulation running'
@@ -15,9 +36,12 @@ class Simulation
       simSteps = TIMESCALE*Math.floor simSeconds/dt
       count = 0
       while count < simSteps
-        for id, craft of @crafts
+        for craftId, craft of @crafts
           craft.simulate dt
         ++count
+
+      for craftId, craft of @crafts
+        craft.store @store
       setTimeout runLoop, simPeriod
     @clock.start()
     runLoop()

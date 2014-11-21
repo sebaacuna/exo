@@ -411,7 +411,7 @@
       this.camera.up.copy(Z);
       this.camera.position.z = KM(10000);
       this.cameraControls = new THREE.OrbitControls(this.camera);
-      this.cameraControls.zoomSpeed = 5;
+      this.cameraControls.zoomSpeed = 0.5;
       this.cameraControls.addEventListener('change', (function(_this) {
         return function() {
           return _this.render();

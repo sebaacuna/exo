@@ -3,11 +3,21 @@ sim = require './sim'
 
 class Craft
   constructor: (@craftId, data)->
+    @key = "craft:#{@craftId}"
     @name = data.name
     @mu = data.mu
-    @r = new THREE.Vector3().fromArray data.r
-    @v = new THREE.Vector3().fromArray data.v
+    @r = new THREE.Vector3()
+    @v = new THREE.Vector3()
+    if data.r
+      @r.fromArray data.r
+    if data.v
+      @v.fromArray data.v
     @thrustVector = new THREE.Vector3()
+
+  store: (store)->
+    store.hmset @key, {craftId: @craftId, name: @name, mu: @mu}
+    store.hmset "#{@key}:r", @r 
+    store.hmset "#{@key}:v", @v
 
   listen: (socket)->
     console.log "listening #{@craftId}"
@@ -40,5 +50,19 @@ class Craft
 
   report: ()->
     "#{@name} #{@de} #{@thrustVector.toArray()}"
-      
+
+xyzToArray = (v)-> [parseFloat(v.x), parseFloat(v.y), parseFloat(v.z)]
+
+Craft.load = (store, key, done)->
+  console.log "Loading #{key}"
+  store.hgetall "#{key}:r", (err, r)->
+    r = xyzToArray(r)
+    store.hgetall "#{key}:v", (err, v)->
+      v = xyzToArray(v)
+      store.hgetall key, (err, data)->
+        data.r = r
+        data.v = v
+        console.log "loaded #{data.craftId}"
+        done new Craft(data.craftId, data)
+
 module.exports.Craft = Craft
