@@ -25,7 +25,7 @@ class World
 
     createScene: ()->
         @scene = new THREE.Scene()
-        # @scene.add new THREE.AmbientLight 0x888888
+        @scene.add new THREE.AmbientLight 0x333333
         
         dLight = new THREE.DirectionalLight 0xcccccc, 1
         # dLight.shadowBias = 5
@@ -83,13 +83,13 @@ class World
         @tick()
 
     # Creates a craft on the server and adds it to the world
-    createCraft: (callback)->
-        craftData = @boi.orbitalState @boi.LO #*(1+10*Math.random())
-        craftData.name = prompt "Craft name"
+    createCraft: (state, callback)->
+         #*(1+10*Math.random())
+        state.name = prompt "Craft name"
         $.ajax
             type: "PUT"
             url:  "/crafts"
-            data: JSON.stringify(craftData)
+            data: JSON.stringify(state)
             processData: false
             contentType: 'application/json; charset=utf-8'
             statusCode: 
@@ -100,6 +100,9 @@ class World
                 403: (data)->
                     alert(data)
 
+    createOrbitingCraft: (callback)->
+        @createCraft @boi.orbitalState(@boi.LO), callback
+
     # Gets existing crafts from server and adds them to the world
     getCrafts: (callback)->
         $.get "/crafts", (crafts, textStatus, $xhr)=>
@@ -108,8 +111,6 @@ class World
             callback @crafts
 
     controlCraft: (craft)->
-        @controlledCraft?.orbit?.visible = false
-        @controlledCraft = craft
         @craftController = craft.controller @keyboard, @socket
         @focusObject craft
         craft.orbit.visible = true

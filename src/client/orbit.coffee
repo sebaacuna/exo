@@ -68,14 +68,7 @@ class OrbitCurve extends THREE.Curve
 
 class Orbit extends THREE.Object3D
     constructor: (@planet)->
-        super
-        @ev = new THREE.Vector3 #Eccentricity vector
-        @h = new THREE.Vector3  #Specific andular momentum
-        
-        @craftCage = uiCage(KM(10), 0xff0000)
-        @add @craftCage
-        @craftCage.visible = false
-        
+        super        
         @periapsisCage = uiCage(KM(10), 0x00ff00)
         @add @periapsisCage
         
@@ -103,11 +96,9 @@ class Orbit extends THREE.Object3D
         
         @line.geometry.vertices = path.createPointsGeometry(ELLIPSE_POINTS).vertices
         @line.geometry.verticesNeedUpdate = true
-
         @line.matrix = @curve.rotation
 
         # Update visual cues
-        @craftCage.position.copy r
         @periapsisCage.position.copy @curve.e
 
 

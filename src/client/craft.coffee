@@ -56,7 +56,7 @@ class Craft extends THREE.Object3D
         setGameVector @mksPosition, @position
         $acceleration.subVectors oldV, @mksVelocity
         
-        @velArrow?.setDirection @mksVelocity.normalize()
+        @velArrow?.setDirection @mksVelocity.clone().normalize()
         @accelArrow?.setLength $acceleration.length()
         @accelArrow?.setDirection $acceleration.normalize()
 

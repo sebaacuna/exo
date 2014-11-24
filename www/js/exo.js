@@ -109,7 +109,7 @@
       setGameVector(this.mksPosition, this.position);
       $acceleration.subVectors(oldV, this.mksVelocity);
       if ((_ref = this.velArrow) != null) {
-        _ref.setDirection(this.mksVelocity.normalize());
+        _ref.setDirection(this.mksVelocity.clone().normalize());
       }
       if ((_ref1 = this.accelArrow) != null) {
         _ref1.setLength($acceleration.length());
@@ -201,13 +201,29 @@
   AdminController = (function() {
     function AdminController($scope, $http) {
       $scope.world = window.world;
-      $scope.createCraft = function() {
-        return world.createCraft(function(craft) {
+      $scope.createOrbitingCraft = function() {
+        return world.createOrbitingCraft(function(craft) {
           return $scope.$digest();
         });
       };
       $scope.controlCraft = function(craft) {
+        var _ref;
+        if ((_ref = $scope.controlledCraft) != null) {
+          _ref.orbit.visible = false;
+        }
+        craft.orbit.line.material.color.setHex(0x0000ff);
+        craft.orbit.visible = true;
+        $scope.controlledCraft = craft;
+        if ($scope.target === craft) {
+          $scope.target = null;
+        }
         world.controlCraft(craft);
+        return $scope.$digest();
+      };
+      $scope.targetCraft = function(craft) {
+        craft.orbit.line.material.color.setHex(0x00ff00);
+        craft.orbit.visible = true;
+        $scope.target = craft;
         return $scope.$digest();
       };
       $scope.eccentricity = function() {
@@ -323,11 +339,6 @@
       var geometry, i, material, _i;
       this.planet = planet;
       Orbit.__super__.constructor.apply(this, arguments);
-      this.ev = new THREE.Vector3;
-      this.h = new THREE.Vector3;
-      this.craftCage = uiCage(KM(10), 0xff0000);
-      this.add(this.craftCage);
-      this.craftCage.visible = false;
       this.periapsisCage = uiCage(KM(10), 0x00ff00);
       this.add(this.periapsisCage);
       this.apoapsisCage = uiCage(KM(10), 0x0000ff);
@@ -356,7 +367,6 @@
       this.line.geometry.vertices = path.createPointsGeometry(ELLIPSE_POINTS).vertices;
       this.line.geometry.verticesNeedUpdate = true;
       this.line.matrix = this.curve.rotation;
-      this.craftCage.position.copy(r);
       return this.periapsisCage.position.copy(this.curve.e);
     };
 
@@ -442,6 +452,7 @@
     World.prototype.createScene = function() {
       var dLight;
       this.scene = new THREE.Scene();
+      this.scene.add(new THREE.AmbientLight(0x333333));
       dLight = new THREE.DirectionalLight(0xcccccc, 1);
       dLight.castShadow = true;
       dLight.shadowCameraRight = dLight.shadowCameraTop = KM(20000);
@@ -518,14 +529,12 @@
       return this.tick();
     };
 
-    World.prototype.createCraft = function(callback) {
-      var craftData;
-      craftData = this.boi.orbitalState(this.boi.LO);
-      craftData.name = prompt("Craft name");
+    World.prototype.createCraft = function(state, callback) {
+      state.name = prompt("Craft name");
       return $.ajax({
         type: "PUT",
         url: "/crafts",
-        data: JSON.stringify(craftData),
+        data: JSON.stringify(state),
         processData: false,
         contentType: 'application/json; charset=utf-8',
         statusCode: {
@@ -544,6 +553,10 @@
       });
     };
 
+    World.prototype.createOrbitingCraft = function(callback) {
+      return this.createCraft(this.boi.orbitalState(this.boi.LO), callback);
+    };
+
     World.prototype.getCrafts = function(callback) {
       return $.get("/crafts", (function(_this) {
         return function(crafts, textStatus, $xhr) {
@@ -558,13 +571,6 @@
     };
 
     World.prototype.controlCraft = function(craft) {
-      var _ref, _ref1;
-      if ((_ref = this.controlledCraft) != null) {
-        if ((_ref1 = _ref.orbit) != null) {
-          _ref1.visible = false;
-        }
-      }
-      this.controlledCraft = craft;
       this.craftController = craft.controller(this.keyboard, this.socket);
       this.focusObject(craft);
       return craft.orbit.visible = true;

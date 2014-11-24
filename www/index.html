@@ -39,15 +39,23 @@
     </head>
     <body>
         <div class="sidebar" ng-controller="AdminController">
-            <a class="pure-button" ng-click="createCraft()" href="#">Create</a>
+            <a class="pure-button" ng-click="createOrbitingCraft()" href="#">Create</a>
             <table class="pure-table">
                 <tbody ng-repeat="(craftId, craft) in world.crafts">
                     <tr>
                         <td>{{craft.name}}</td>
-                        <td><a ng-click="controlCraft(craft)" href="#">
-                            <i ng-if="craft==world.controlledCraft" class="fa fa-gamepad"></i>
-                            <i ng-if="craft!=world.controlledCraft" class="fa fa-square"></i>
-                        </a></td>
+                        <td>
+                            <a ng-if="craft!=controlledCraft" ng-click="controlCraft(craft)" href="#"><i  class="fa fa-gamepad"></i></a>
+                            <i ng-if="craft==controlledCraft" class="fa fa-gamepad"></i>
+                        </td>
+                        <td>
+                            <a  ng-if="craft!=controlledCraft && craft!=target" 
+                                ng-click="targetCraft(craft)" 
+                                href="#">
+                                <i class="fa fa-circle-o"></i>
+                            </a>
+                            <i ng-if="craft==target" class="fa fa-dot-circle-o"></i>
+                        </td>
                     </tr>
                 </tbody>
             </table>
@@ -57,19 +65,19 @@
                         <td>Ecc</td><td>{{ eccentricity() }}</td>
                     </tr>
                     <tr>
-                        <td>R</td><td>{{world.controlledCraft.mksPosition.length()}}</td>
+                        <td>R</td><td>{{controlledCraft.mksPosition.length()}}</td>
                     </tr>
                     <tr>
-                        <td>h</td><td>{{world.controlledCraft.orbit.curve.h.length()}}</td>
+                        <td>h</td><td>{{controlledCraft.orbit.curve.h.length()}}</td>
                     </tr>
                     <tr>
-                        <td>µ</td><td>{{world.controlledCraft.orbit.curve.mu}}</td>
+                        <td>µ</td><td>{{controlledCraft.orbit.curve.mu}}</td>
                     </tr>
                     <tr>
-                        <td>a</td><td>{{world.controlledCraft.orbit.curve.a.length()}}</td>
+                        <td>a</td><td>{{controlledCraft.orbit.curve.a.length()}}</td>
                     </tr>
                     <tr>
-                        <td>f</td><td>{{world.controlledCraft.orbit.curve.f}}</td>
+                        <td>f</td><td>{{controlledCraft.orbit.curve.f}}</td>
                     </tr>
                 </tbody>
             </table>
