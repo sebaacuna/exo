@@ -18,6 +18,7 @@
                 left: 0;
                 bottom: 0;
                 background: #eee;
+                overflow: hidden;
             }
             .viewport {
                 position: absolute;
@@ -29,6 +30,10 @@
             }
             .crafts {
 
+            };
+
+            .sidebar table {
+                width: 100%
             }
         </style>
     </head>
@@ -49,7 +54,7 @@
             <table class="pure-table">
                 <tbody>
                     <tr>
-                        <td>Ecc</td><td>{{world.controlledCraft.orbit.curve.ecc}}</td>
+                        <td>Ecc</td><td>{{ eccentricity() }}</td>
                     </tr>
                     <tr>
                         <td>R</td><td>{{world.controlledCraft.mksPosition.length()}}</td>
@@ -59,6 +64,12 @@
                     </tr>
                     <tr>
                         <td>µ</td><td>{{world.controlledCraft.orbit.curve.mu}}</td>
+                    </tr>
+                    <tr>
+                        <td>a</td><td>{{world.controlledCraft.orbit.curve.a.length()}}</td>
+                    </tr>
+                    <tr>
+                        <td>f</td><td>{{world.controlledCraft.orbit.curve.f}}</td>
                     </tr>
                 </tbody>
             </table>

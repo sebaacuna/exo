@@ -13,7 +13,7 @@ class Planet extends THREE.Object3D
 
     orbitalState: (altitude)->
         R = @radius + altitude
-        V = Math.sqrt(@mu/R)
+        V = Math.sqrt(@mu/R)*1.1
         return {
             r: Y.clone().normalize().multiplyScalar(R).toArray()
             v: X.clone().multiplyScalar(V).toArray()

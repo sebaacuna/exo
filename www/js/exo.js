@@ -103,7 +103,9 @@
       oldV = this.mksVelocity.clone();
       this.mksPosition.copy(state.r);
       this.mksVelocity.copy(state.v);
-      this.orbit.update(this.mksPosition, this.mksVelocity);
+      if (this.orbit.visible) {
+        this.orbit.update(this.mksPosition, this.mksVelocity);
+      }
       setGameVector(this.mksPosition, this.position);
       $acceleration.subVectors(oldV, this.mksVelocity);
       if ((_ref = this.velArrow) != null) {
@@ -116,8 +118,13 @@
     };
 
     Craft.prototype.controller = function(keyboard, socket) {
-      var setThrust, thrustEnd, thrustStart;
+      var sendThrust, setThrust, thrustEnd, thrustStart;
       socket.emit("control", this.craftId);
+      sendThrust = (function(_this) {
+        return function() {
+          return socket.emit("" + _this.channel + "-thrust", _this.thrustVector().toArray());
+        };
+      })(this);
       thrustStart = (function(_this) {
         return function(event) {
           if (event.keyCode === 32) {
@@ -134,12 +141,9 @@
       })(this);
       setThrust = (function(_this) {
         return function(throttle) {
-          var v;
           if (throttle !== _this.throttle) {
             _this.throttle = throttle;
-            v = _this.thrustVector();
-            console.log("Throttle", throttle, v);
-            return socket.emit("" + _this.channel + "-thrust", v.toArray());
+            return sendThrust();
           }
         };
       })(this);
@@ -149,22 +153,20 @@
         return function() {
           if (keyboard.pressed("w")) {
             _this.mesh.rotateOnAxis(_this.mesh.pitchAxis, -0.05);
-          }
-          if (keyboard.pressed("s")) {
+          } else if (keyboard.pressed("s")) {
             _this.mesh.rotateOnAxis(_this.mesh.pitchAxis, 0.05);
-          }
-          if (keyboard.pressed("d")) {
+          } else if (keyboard.pressed("d")) {
             _this.mesh.rotateOnAxis(_this.mesh.yawAxis, -0.05);
-          }
-          if (keyboard.pressed("a")) {
+          } else if (keyboard.pressed("a")) {
             _this.mesh.rotateOnAxis(_this.mesh.yawAxis, 0.05);
-          }
-          if (keyboard.pressed("q")) {
+          } else if (keyboard.pressed("q")) {
             _this.mesh.rotateOnAxis(_this.mesh.rollAxis, 0.05);
+          } else if (keyboard.pressed("e")) {
+            _this.mesh.rotateOnAxis(_this.mesh.rollAxis, -0.05);
+          } else {
+            return;
           }
-          if (keyboard.pressed("e")) {
-            return _this.mesh.rotateOnAxis(_this.mesh.rollAxis, -0.05);
-          }
+          return sendThrust();
         };
       })(this);
     };
@@ -175,7 +177,7 @@
         this.thrustArrow.setLength(0);
         return ORIGIN;
       } else {
-        F = 2000;
+        F = 10000;
         vector = this.mesh.rollAxis.clone();
         this.thrustArrow.setDirection(vector);
         this.thrustArrow.setLength(KM(1000) * this.throttle);
@@ -206,11 +208,18 @@
       };
       $scope.controlCraft = function(craft) {
         world.controlCraft(craft);
-        return $scope.digest();
+        return $scope.$digest();
+      };
+      $scope.eccentricity = function() {
+        var _ref;
+        return Math.floor(((_ref = world.controlledCraft) != null ? _ref.orbit.curve.ecc : void 0) * 100) / 100;
       };
       world.getCrafts(function(crafts) {
         return $scope.$digest();
       });
+      setInterval(function() {
+        return $scope.$digest();
+      }, 1000);
     }
 
     return AdminController;
@@ -224,7 +233,7 @@
 }).call(this);
 
 (function() {
-  var ELLIPSE_POINTS, Orbit, uiCage,
+  var ELLIPSE_POINTS, Orbit, OrbitCurve, TwoPI, uiCage,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -241,6 +250,71 @@
   };
 
   ELLIPSE_POINTS = 2000;
+
+  TwoPI = Math.PI * 2;
+
+  OrbitCurve = (function(_super) {
+    __extends(OrbitCurve, _super);
+
+    function OrbitCurve(mu) {
+      this.mu = mu;
+      this.h = new THREE.Vector3;
+      this.e = new THREE.Vector3;
+      this.eY = new THREE.Vector3;
+      this.eZ = new THREE.Vector3;
+      this.q1 = new THREE.Quaternion;
+      this.q2 = new THREE.Quaternion;
+      this.q3 = new THREE.Quaternion;
+      this.rotation = new THREE.Matrix4;
+    }
+
+    OrbitCurve.prototype.update = function(r, v) {
+      var x, y, zAngle;
+      this.r = r.clone().normalize();
+      this.h.crossVectors(r, v);
+      this.e.crossVectors(v, this.h.clone().normalize()).multiplyScalar(this.h.length() / this.mu);
+      this.e.sub(this.r);
+      this.ecc = this.e.length();
+      if (this.ecc < 1e-10) {
+        this.e.copy(X);
+      }
+      this.P = this.h.lengthSq() / this.mu;
+      this.c = this.P / (1 + this.ecc);
+      this.e.normalize();
+      this.eZ = this.h.clone().normalize();
+      this.eY.crossVectors(this.eZ, this.e);
+      this.q1.setFromUnitVectors(Z, this.eZ);
+      x = X.clone().applyQuaternion(this.q1);
+      y = Y.clone().applyQuaternion(this.q1);
+      zAngle = Math.acos(this.e.dot(x));
+      if (this.e.dot(y) < 0) {
+        zAngle = TwoPI - zAngle;
+      }
+      this.q2.setFromAxisAngle(Z, zAngle);
+      this.q1.multiply(this.q2);
+      this.f = Math.acos(this.r.dot(this.e));
+      if (this.r.dot(this.eY) < 0) {
+        this.f = TwoPI - this.f;
+      }
+      this.e.multiplyScalar(this.c);
+      return this.rotation.makeRotationFromQuaternion(this.q1);
+    };
+
+    OrbitCurve.prototype.getPoint = function(t) {
+      var X, Y, angle, cosT, length, point, sinT;
+      angle = this.f + t * TwoPI;
+      cosT = Math.cos(angle);
+      sinT = Math.sin(angle);
+      length = this.P / (1 + this.ecc * cosT);
+      X = length * cosT;
+      Y = length * sinT;
+      point = new THREE.Vector3(X, Y, 0);
+      return point;
+    };
+
+    return OrbitCurve;
+
+  })(THREE.Curve);
 
   Orbit = (function(_super) {
     __extends(Orbit, _super);
@@ -268,33 +342,22 @@
         geometry.vertices.push(new THREE.Vector3);
       }
       this.line = new THREE.Line(geometry, material);
+      this.line.matrixAutoUpdate = false;
       this.add(this.line);
       this.planet.add(this);
-      this.line.add(new THREE.AxisHelper(KM(8000)));
+      this.curve = new OrbitCurve(this.planet.mu);
     }
 
     Orbit.prototype.update = function(r, v) {
-      var P, ecc, ecc2, ellipse, lineX, path, semiMajor, semiMinor;
-      this.h.crossVectors(r, v);
-      this.ev.crossVectors(v, this.h.clone().normalize()).multiplyScalar(this.h.length() / this.planet.mu);
-      this.ev.sub(r.clone().normalize());
-      ecc = this.ev.length();
-      ecc2 = this.ev.lengthSq();
-      this.ev.normalize();
-      P = this.h.lengthSq() / this.planet.mu;
-      semiMajor = P / (1 - ecc2);
-      semiMinor = semiMajor * Math.sqrt(1 - ecc2);
-      this.line.lookAt(this.h);
-      lineX = X.clone();
-      this.line.rotateOnAxis(Z, 2 * Math.PI - lineX.angleTo(this.ev));
-      ellipse = new THREE.EllipseCurve(semiMajor * ecc, 0, semiMajor, semiMinor, 0, 2 * Math.PI, false);
+      var path;
+      this.curve.update(r, v);
       path = new THREE.CurvePath;
-      path.add(ellipse);
+      path.add(this.curve);
       this.line.geometry.vertices = path.createPointsGeometry(ELLIPSE_POINTS).vertices;
       this.line.geometry.verticesNeedUpdate = true;
+      this.line.matrix = this.curve.rotation;
       this.craftCage.position.copy(r);
-      this.apoapsisCage.position.copy(this.ev.clone().multiplyScalar(-P / (1 - ecc)));
-      return this.periapsisCage.position.copy(this.ev.multiplyScalar(P / (1 + ecc)));
+      return this.periapsisCage.position.copy(this.curve.e);
     };
 
     return Orbit;
@@ -411,7 +474,7 @@
       this.camera.up.copy(Z);
       this.camera.position.z = KM(10000);
       this.cameraControls = new THREE.OrbitControls(this.camera);
-      this.cameraControls.zoomSpeed = 0.5;
+      this.cameraControls.zoomSpeed = 2;
       this.cameraControls.addEventListener('change', (function(_this) {
         return function() {
           return _this.render();
@@ -457,7 +520,7 @@
 
     World.prototype.createCraft = function(callback) {
       var craftData;
-      craftData = this.boi.orbitalState(this.boi.LO * (1 + 10 * Math.random()));
+      craftData = this.boi.orbitalState(this.boi.LO);
       craftData.name = prompt("Craft name");
       return $.ajax({
         type: "PUT",
@@ -465,14 +528,19 @@
         data: JSON.stringify(craftData),
         processData: false,
         contentType: 'application/json; charset=utf-8',
-        success: (function(_this) {
-          return function(data, textStatus, $xhr) {
-            var craft;
-            craft = new Craft(data, _this.boi);
-            _this.addCraft(craft);
-            return callback(craft);
-          };
-        })(this)
+        statusCode: {
+          201: (function(_this) {
+            return function(data) {
+              var craft;
+              craft = new Craft(data, _this.boi);
+              _this.addCraft(craft);
+              return callback(craft);
+            };
+          })(this),
+          403: function(data) {
+            return alert(data);
+          }
+        }
       });
     };
 

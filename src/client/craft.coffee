@@ -50,7 +50,8 @@ class Craft extends THREE.Object3D
         oldV = @mksVelocity.clone()
         @mksPosition.copy state.r
         @mksVelocity.copy state.v
-        @orbit.update @mksPosition, @mksVelocity
+        if @orbit.visible
+            @orbit.update @mksPosition, @mksVelocity
         
         setGameVector @mksPosition, @position
         $acceleration.subVectors oldV, @mksVelocity
@@ -61,19 +62,19 @@ class Craft extends THREE.Object3D
 
     controller: (keyboard, socket)->
         socket.emit "control", @craftId
+        
+        sendThrust = ()=>
+            socket.emit "#{@channel}-thrust", @thrustVector().toArray()
         thrustStart = (event)=>
             if event.keyCode == 32 #space
                 setThrust 1.0
         thrustEnd = (event)=>
             if event.keyCode == 32 #space
                 setThrust 0.0
-        
         setThrust = (throttle)=>
             if throttle != @throttle
                 @throttle = throttle
-                v = @thrustVector()
-                console.log "Throttle", throttle, v
-                socket.emit "#{@channel}-thrust", v.toArray()
+                sendThrust()
 
         document.addEventListener("keydown", thrustStart, false)
         document.addEventListener("keyup", thrustEnd, false)
@@ -81,23 +82,27 @@ class Craft extends THREE.Object3D
         ()=>
             if keyboard.pressed("w")
                 @mesh.rotateOnAxis @mesh.pitchAxis, -0.05
-            if keyboard.pressed("s")
+            else if keyboard.pressed("s")
                 @mesh.rotateOnAxis @mesh.pitchAxis, 0.05
-            if keyboard.pressed("d")
+            else if keyboard.pressed("d")
                 @mesh.rotateOnAxis @mesh.yawAxis, -0.05
-            if keyboard.pressed("a")
+            else if keyboard.pressed("a")
                 @mesh.rotateOnAxis @mesh.yawAxis, 0.05
-            if keyboard.pressed("q")
+            else if keyboard.pressed("q")
                 @mesh.rotateOnAxis @mesh.rollAxis, 0.05
-            if keyboard.pressed("e")
+            else if keyboard.pressed("e")
                 @mesh.rotateOnAxis @mesh.rollAxis, -0.05
+            else
+                return
+            sendThrust()
+
 
     thrustVector: ()->
         if @throttle == 0
             @thrustArrow.setLength 0
             return ORIGIN
         else
-            F = 2000 #Thrust [N]
+            F = 10000 #Thrust [N]
             vector = @mesh.rollAxis.clone()
 
             @thrustArrow.setDirection vector

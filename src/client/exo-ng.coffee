@@ -9,6 +9,8 @@ class AdminController
             world.controlCraft craft
             $scope.$digest()
 
+        $scope.eccentricity = ()->
+            Math.floor(world.controlledCraft?.orbit.curve.ecc*100)/100
 
         world.getCrafts (crafts)->
             $scope.$digest()
