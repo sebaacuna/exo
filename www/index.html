@@ -1,7 +1,7 @@
 <html ng-app="exo">
     <head>
         <title>EXO</title>
-        <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+        <link href="/css/font-awesome/css/font-awesome.min.css" rel="stylesheet">
         <link href='http://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
         <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.5.0/pure-min.css">
         <style>
@@ -42,18 +42,30 @@
             <a class="pure-button" ng-click="createOrbitingCraft()" href="#">Create</a>
             <table class="pure-table">
                 <tbody ng-repeat="(craftId, craft) in world.crafts">
-                    <tr>
-                        <td>{{craft.name}}</td>
+                    <tr ng-if="craft!=controlledCraft" >
                         <td>
-                            <a ng-if="craft!=controlledCraft" ng-click="controlCraft(craft)" href="#"><i  class="fa fa-gamepad"></i></a>
-                            <i ng-if="craft==controlledCraft" class="fa fa-gamepad"></i>
+                            <a ng-click="controlCraft(craft)" href="#">{{craft.name}}</a>
                         </td>
                         <td>
-                            <a  ng-if="craft!=controlledCraft && craft!=target" 
+                            <a ng-click="controlCraft(craft)" href="#"><i  class="fa fa-gamepad"></i></a>
+                        </td>
+                        <td>
+                            <a  ng-if="craft!=target" 
                                 ng-click="targetCraft(craft)" 
                                 href="#">
                                 <i class="fa fa-circle-o"></i>
                             </a>
+                            <i ng-if="craft==target" class="fa fa-dot-circle-o"></i>
+                        </td>
+                    </tr>
+                    <tr ng-if="craft==controlledCraft" >
+                        <td>
+                            {{craft.name}}
+                        </td>
+                        <td>
+                            <i class="fa fa-gamepad"></i>
+                        </td>
+                        <td>
                             <i ng-if="craft==target" class="fa fa-dot-circle-o"></i>
                         </td>
                     </tr>
