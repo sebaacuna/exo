@@ -1,6 +1,8 @@
 class AdminController
     constructor: ($scope, $http)->
-        $scope.world = window.world
+        world = window.game.world
+        window.game.loop.push ()-> $scope.$digest()
+
         $scope.createOrbitingCraft = ()-> 
             world.createOrbitingCraft (craft)-> 
                 $scope.$digest()
@@ -27,12 +29,8 @@ class AdminController
         world.getCrafts (crafts)->
             $scope.$digest()
 
-        setInterval(
-            ()->
-                $scope.$digest()
-            1000
-            )
+        $scope.world = world
 
 
-exoApp = angular.module "exo", []
+window.exoApp = angular.module "exo", []
 exoApp.controller "AdminController", AdminController

@@ -47,7 +47,7 @@
                             <a ng-click="controlCraft(craft)" href="#">{{craft.name}}</a>
                         </td>
                         <td>
-                            <a ng-click="controlCraft(craft)" href="#"><i  class="fa fa-gamepad"></i></a>
+                            &nbsp;
                         </td>
                         <td>
                             <a  ng-if="craft!=target" 
@@ -99,7 +99,11 @@
         <script src="js/lib.js"></script>
         <script src="js/exo.js"></script>
         <script>
-            start();
+            // $(document).ready(function() {
+                game = new Game();
+                game.start();    
+            // })
+            
         </script>
     </body>
 </html>

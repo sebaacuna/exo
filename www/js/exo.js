@@ -27,26 +27,6 @@
 
   window.Z = new THREE.Vector3(0, 0, 1);
 
-  window.start = function() {
-    var socket;
-    socket = io('http://localhost:8001');
-    window.world = new World($(".viewport"), socket);
-    socket.on("boi-" + this.world.boi.planetId + "-crafts", (function(_this) {
-      return function(craftStates) {
-        return world.updateCrafts(craftStates);
-      };
-    })(this));
-    return $.get("/signin", function(data) {
-      console.log("Session ID:", data);
-      window.sessionID = data;
-      socket.emit("identify", sessionID);
-      return socket.on('ready', function(sessionID) {
-        console.log("ready", sessionID);
-        return world.start();
-      });
-    });
-  };
-
 }).call(this);
 
 (function() {
@@ -196,11 +176,15 @@
 }).call(this);
 
 (function() {
-  var AdminController, exoApp;
+  var AdminController;
 
   AdminController = (function() {
     function AdminController($scope, $http) {
-      $scope.world = window.world;
+      var world;
+      world = window.game.world;
+      window.game.loop.push(function() {
+        return $scope.$digest();
+      });
       $scope.createOrbitingCraft = function() {
         return world.createOrbitingCraft(function(craft) {
           return $scope.$digest();
@@ -233,18 +217,134 @@
       world.getCrafts(function(crafts) {
         return $scope.$digest();
       });
-      setInterval(function() {
-        return $scope.$digest();
-      }, 1000);
+      $scope.world = world;
     }
 
     return AdminController;
 
   })();
 
-  exoApp = angular.module("exo", []);
+  window.exoApp = angular.module("exo", []);
 
   exoApp.controller("AdminController", AdminController);
+
+}).call(this);
+
+(function() {
+  var Game;
+
+  Game = (function() {
+    function Game() {
+      this.socket = io('http://localhost:8001');
+      this.world = new World($(".viewport"), this.socket);
+      this.hud = new HUD(this.world.renderer);
+      this.loop = [];
+      this.loop.push((function(_this) {
+        return function() {
+          return _this.world.craftController();
+        };
+      })(this));
+      this.loop.push((function(_this) {
+        return function() {
+          return _this.world.cameraController();
+        };
+      })(this));
+      this.socket.on("boi-" + this.world.boi.planetId + "-crafts", (function(_this) {
+        return function(craftStates) {
+          return _this.world.updateCrafts(craftStates);
+        };
+      })(this));
+    }
+
+    Game.prototype.start = function() {
+      return $.get("/signin", (function(_this) {
+        return function(sessionID) {
+          _this.socket.emit("identify", sessionID);
+          return _this.socket.on('ready', function(sessionID) {
+            return _this.run();
+          });
+        };
+      })(this));
+    };
+
+    Game.prototype.run = function() {
+      var tick;
+      tick = (function(_this) {
+        return function() {
+          var f, _i, _len, _ref;
+          _this.world.render();
+          _this.hud.render();
+          _ref = _this.loop;
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            f = _ref[_i];
+            f();
+          }
+          return requestAnimationFrame(tick);
+        };
+      })(this);
+      return tick();
+    };
+
+    return Game;
+
+  })();
+
+  window.Game = Game;
+
+}).call(this);
+
+(function() {
+  var HUD;
+
+  HUD = (function() {
+    function HUD(renderer) {
+      this.renderer = renderer;
+      this.height = $(this.renderer.domElement).height();
+      this.width = $(this.renderer.domElement).width();
+      this.far = 400;
+      this.createScene();
+      this.setup();
+      this.createCamera();
+    }
+
+    HUD.prototype.createScene = function() {
+      this.scene = new THREE.Scene();
+      return this.scene.add(new THREE.AxisHelper(10));
+    };
+
+    HUD.prototype.setup = function() {
+      this.navball = new THREE.Mesh(new THREE.SphereGeometry(50, 10, 10), new THREE.MeshBasicMaterial({
+        color: 0x8888ff,
+        wireframe: true
+      }));
+      this.navball.position.x = 55;
+      this.navball.position.y = 55;
+      return this.scene.add(this.navball);
+    };
+
+    HUD.prototype.createCamera = function() {
+      var focus;
+      this.camera = new THREE.OrthographicCamera(-this.width / 2, this.width / 2, this.height / 2, -this.height / 2, 1, this.far);
+      this.camera.position.x = this.width / 2;
+      this.camera.position.y = this.height / 2;
+      this.camera.position.z = -this.far / 2;
+      focus = this.camera.position.clone();
+      focus.z = 0;
+      return this.camera.lookAt(focus);
+    };
+
+    HUD.prototype.render = function() {
+      this.renderer.clearDepth();
+      return this.renderer.render(this.scene, this.camera);
+    };
+
+    HUD.prototype.update = function() {};
+
+    return HUD;
+
+  })();
+
+  window.HUD = HUD;
 
 }).call(this);
 
@@ -427,24 +527,13 @@
       this.viewport = viewport;
       this.socket = socket;
       this.crafts = {};
-      this.gameLoop = [];
       this.boi = new Planet('Earth', KM(6378));
       this.createScene();
       this.createCamera();
       this.createRenderer();
       this.keyboard = new THREEx.KeyboardState;
       this.craftController = function() {};
-      this.gameLoop.push((function(_this) {
-        return function() {
-          return _this.craftController();
-        };
-      })(this));
       this.cameraController = function() {};
-      this.gameLoop.push((function(_this) {
-        return function() {
-          return _this.cameraController();
-        };
-      })(this));
       this.focusObject(this.boi);
       this.scene.add(this.boi);
     }
@@ -472,10 +561,12 @@
       this.renderer.setSize(this.viewport.width(), this.viewport.height());
       this.renderer.shadowMapEnabled = true;
       this.renderer.shadowMapSoft = false;
+      this.renderer.autoClear = false;
       return this.viewport.append(this.renderer.domElement);
     };
 
     World.prototype.render = function() {
+      this.renderer.clear();
       return this.renderer.render(this.scene, this.camera);
     };
 
@@ -511,22 +602,6 @@
         _results.push((_ref = this.crafts[id]) != null ? _ref.updateState(state) : void 0);
       }
       return _results;
-    };
-
-    World.prototype.start = function() {
-      this.tick = (function(_this) {
-        return function() {
-          var f, _i, _len, _ref;
-          _this.render();
-          _ref = _this.gameLoop;
-          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-            f = _ref[_i];
-            f();
-          }
-          return requestAnimationFrame(_this.tick);
-        };
-      })(this);
-      return this.tick();
     };
 
     World.prototype.createCraft = function(state, callback) {

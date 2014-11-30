@@ -1,7 +1,6 @@
 class World
     constructor:(@viewport, @socket)->
         @crafts = {}
-        @gameLoop = []
         @boi = new Planet('Earth', KM(6378))
         
         @createScene()
@@ -9,19 +8,11 @@ class World
         @createRenderer()
 
         @keyboard = new THREEx.KeyboardState
-
-        # Takes control of the craft
         @craftController = ()-> #No-op by default
-        @gameLoop.push ()=> @craftController()
-
-        # Photography
         @cameraController = ()-> #No-op as default
-        @gameLoop.push ()=>@cameraController()
 
         @focusObject @boi
-
         @scene.add @boi
-        # @scene.add new THREE.AxisHelper KM(10000)
 
     createScene: ()->
         @scene = new THREE.Scene()
@@ -37,18 +28,18 @@ class World
         dLight.shadowCameraFar = KM(40000)
         dLight.shadowDarkness = 1
         dLight.position.set KM(20000), 0, 0
-
         @scene.add dLight
-
 
     createRenderer: ()->
         @renderer = new THREE.WebGLRenderer antialias: true, logarithmicDepthBuffer: true
         @renderer.setSize @viewport.width(), @viewport.height()
         @renderer.shadowMapEnabled   = true
         @renderer.shadowMapSoft = false
+        @renderer.autoClear = false
         @viewport.append @renderer.domElement
 
     render: ()->
+        @renderer.clear()
         @renderer.render @scene, @camera
 
     createCamera: ()->
@@ -73,14 +64,6 @@ class World
     updateCrafts: (craftStates)->
         for id, state of craftStates
             @crafts[id]?.updateState state
-
-    start: ()->
-        @tick = ()=>
-            @render()
-            for f in @gameLoop
-                f()
-            requestAnimationFrame @tick
-        @tick()
 
     # Creates a craft on the server and adds it to the world
     createCraft: (state, callback)->
