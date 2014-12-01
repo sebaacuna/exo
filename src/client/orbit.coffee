@@ -5,11 +5,9 @@ uiCage = (size, color)->
     return mesh
 
 ELLIPSE_POINTS = 2000
-TwoPI = Math.PI*2
 
 class OrbitCurve extends THREE.Curve
     constructor: (@mu)->
-        @h = new THREE.Vector3  # Ang Mom
         @e = new THREE.Vector3  # Ecc vector, ellipse's X-vector
         @eY = new THREE.Vector3  # Ecc "Y"-vector
         @eZ = new THREE.Vector3  # Ecc "Z"-vector
@@ -18,23 +16,22 @@ class OrbitCurve extends THREE.Curve
         @q3 = new THREE.Quaternion
         @rotation = new THREE.Matrix4
 
-    update: (r,v)->
+    update: (r,v,h)->
         @r = r.clone().normalize()
-        @h.crossVectors r, v
-        @e.crossVectors(v,@h.clone().normalize()).multiplyScalar @h.length()/@mu
+        @e.crossVectors(v,h.clone().normalize()).multiplyScalar h.length()/@mu
         @e.sub @r
 
         @ecc = @e.length()
         if @ecc < 1e-10
             @e.copy X
-        @P = @h.lengthSq()/@mu
+        @P = h.lengthSq()/@mu
 
         # Distance from center to focus
         @c = @P/(1+@ecc)
 
         # Ellipse vectors and quaternions
         @e.normalize()
-        @eZ = @h.clone().normalize()
+        @eZ = h.clone().normalize()
         @eY.crossVectors @eZ, @e
 
         @q1.setFromUnitVectors Z, @eZ
@@ -88,9 +85,16 @@ class Orbit extends THREE.Object3D
 
         # @line.add new THREE.AxisHelper KM(8000)
         @curve = new OrbitCurve @planet.mu
+        @out = new THREE.Vector3
+        @north = new THREE.Vector3
+        @west = new THREE.Vector3
 
-    update: (r,v)->
-        @curve.update r, v
+    update: (r,v,h)->
+        @out.copy r.clone().normalize()
+        @west.crossVectors(@out, Z).normalize() #TODO: Generalize on planet's up
+        @north.crossVectors @west, @out
+
+        @curve.update r, v, h
         path = new THREE.CurvePath 
         path.add @curve
         

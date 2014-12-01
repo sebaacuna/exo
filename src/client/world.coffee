@@ -101,6 +101,9 @@ class World
     # Adds a craft to the client's world
     addCraft: (craft)->
         @crafts[craft.craftId] = craft
+        align = new THREE.Matrix4
+        align.lookAt craft.mesh.rollAxis, craft.mksVelocity.clone().normalize(), craft.mesh.yawAxis
+        craft.mesh.applyMatrix align
         @scene.add craft
 
     focusObject: (object)->

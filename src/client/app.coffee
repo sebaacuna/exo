@@ -11,3 +11,7 @@ window.ORIGIN = new THREE.Vector3
 window.X = new THREE.Vector3 1, 0, 0
 window.Y = new THREE.Vector3 0, 1, 0
 window.Z = new THREE.Vector3 0, 0, 1
+
+window.y2z = new THREE.Matrix4().makeRotationX(Math.PI/2)
+
+window.TwoPI = Math.PI*2

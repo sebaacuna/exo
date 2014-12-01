@@ -15,6 +15,7 @@ class AdminController
             if $scope.target == craft
                 $scope.target = null
             world.controlCraft craft
+            window.game.hud.setCraft craft
             $scope.$digest()
 
         $scope.targetCraft = (craft)->
@@ -24,7 +25,7 @@ class AdminController
             $scope.$digest()
 
         $scope.eccentricity = ()->
-            Math.floor(world.controlledCraft?.orbit.curve.ecc*100)/100
+            Math.floor($scope.controlledCraft?.orbit.curve.ecc*100)/100
 
         world.getCrafts (crafts)->
             $scope.$digest()

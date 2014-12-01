@@ -27,6 +27,10 @@
 
   window.Z = new THREE.Vector3(0, 0, 1);
 
+  window.y2z = new THREE.Matrix4().makeRotationX(Math.PI / 2);
+
+  window.TwoPI = Math.PI * 2;
+
 }).call(this);
 
 (function() {
@@ -58,6 +62,7 @@
       this.add(this.mesh);
       this.mksPosition = new THREE.Vector3;
       this.mksVelocity = new THREE.Vector3;
+      this.mksH = new THREE.Vector3;
       this.mesh.rollAxis = this.mesh.up;
       this.mesh.yawAxis = X;
       if (0 === this.mesh.yawAxis.angleTo(this.mesh.rollAxis)) {
@@ -76,6 +81,7 @@
       this.orbit = new Orbit(this.planet);
       this.orbit.visible = false;
       this.updateState(data);
+      this.mesh.lookAt(this.mksVelocity);
     }
 
     Craft.prototype.updateState = function(state) {
@@ -83,8 +89,9 @@
       oldV = this.mksVelocity.clone();
       this.mksPosition.copy(state.r);
       this.mksVelocity.copy(state.v);
+      this.mksH.crossVectors(this.mksPosition, this.mksVelocity);
       if (this.orbit.visible) {
-        this.orbit.update(this.mksPosition, this.mksVelocity);
+        this.orbit.update(this.mksPosition, this.mksVelocity, this.mksH);
       }
       setGameVector(this.mksPosition, this.position);
       $acceleration.subVectors(oldV, this.mksVelocity);
@@ -131,22 +138,30 @@
       document.addEventListener("keyup", thrustEnd, false);
       return (function(_this) {
         return function() {
-          if (keyboard.pressed("w")) {
-            _this.mesh.rotateOnAxis(_this.mesh.pitchAxis, -0.05);
-          } else if (keyboard.pressed("s")) {
-            _this.mesh.rotateOnAxis(_this.mesh.pitchAxis, 0.05);
-          } else if (keyboard.pressed("d")) {
-            _this.mesh.rotateOnAxis(_this.mesh.yawAxis, -0.05);
-          } else if (keyboard.pressed("a")) {
-            _this.mesh.rotateOnAxis(_this.mesh.yawAxis, 0.05);
-          } else if (keyboard.pressed("q")) {
-            _this.mesh.rotateOnAxis(_this.mesh.rollAxis, 0.05);
-          } else if (keyboard.pressed("e")) {
-            _this.mesh.rotateOnAxis(_this.mesh.rollAxis, -0.05);
+          var ROTATION;
+          if (keyboard.pressed("shift")) {
+            ROTATION = 0.001;
           } else {
-            return;
+            ROTATION = 0.01;
           }
-          return sendThrust();
+          if (keyboard.pressed("w")) {
+            _this.mesh.rotateOnAxis(_this.mesh.pitchAxis, ROTATION);
+          }
+          if (keyboard.pressed("s")) {
+            _this.mesh.rotateOnAxis(_this.mesh.pitchAxis, -ROTATION);
+          }
+          if (keyboard.pressed("d")) {
+            _this.mesh.rotateOnAxis(_this.mesh.yawAxis, -ROTATION);
+          }
+          if (keyboard.pressed("a")) {
+            _this.mesh.rotateOnAxis(_this.mesh.yawAxis, ROTATION);
+          }
+          if (keyboard.pressed("q")) {
+            _this.mesh.rotateOnAxis(_this.mesh.rollAxis, -ROTATION);
+          }
+          if (keyboard.pressed("e")) {
+            return _this.mesh.rotateOnAxis(_this.mesh.rollAxis, ROTATION);
+          }
         };
       })(this);
     };
@@ -202,6 +217,7 @@
           $scope.target = null;
         }
         world.controlCraft(craft);
+        window.game.hud.setCraft(craft);
         return $scope.$digest();
       };
       $scope.targetCraft = function(craft) {
@@ -212,7 +228,7 @@
       };
       $scope.eccentricity = function() {
         var _ref;
-        return Math.floor(((_ref = world.controlledCraft) != null ? _ref.orbit.curve.ecc : void 0) * 100) / 100;
+        return Math.floor(((_ref = $scope.controlledCraft) != null ? _ref.orbit.curve.ecc : void 0) * 100) / 100;
       };
       world.getCrafts(function(crafts) {
         return $scope.$digest();
@@ -297,48 +313,52 @@
   var HUD;
 
   HUD = (function() {
+    HUD.prototype.scale = 80;
+
     function HUD(renderer) {
       this.renderer = renderer;
-      this.height = $(this.renderer.domElement).height();
-      this.width = $(this.renderer.domElement).width();
-      this.far = 400;
+      this.height = $(this.renderer.domElement).height() / this.scale;
+      this.width = $(this.renderer.domElement).width() / this.scale;
       this.createScene();
       this.setup();
       this.createCamera();
     }
 
     HUD.prototype.createScene = function() {
+      var dLight;
       this.scene = new THREE.Scene();
-      return this.scene.add(new THREE.AxisHelper(10));
+      this.scene.add(new THREE.AmbientLight(0x303030));
+      dLight = new THREE.DirectionalLight(0xffffff, 0.5);
+      dLight.position.copy(Y.clone());
+      return this.scene.add(dLight);
     };
 
     HUD.prototype.setup = function() {
-      this.navball = new THREE.Mesh(new THREE.SphereGeometry(50, 10, 10), new THREE.MeshBasicMaterial({
-        color: 0x8888ff,
-        wireframe: true
-      }));
-      this.navball.position.x = 55;
-      this.navball.position.y = 55;
+      this.navball = new Navball(1);
       return this.scene.add(this.navball);
     };
 
     HUD.prototype.createCamera = function() {
       var focus;
-      this.camera = new THREE.OrthographicCamera(-this.width / 2, this.width / 2, this.height / 2, -this.height / 2, 1, this.far);
-      this.camera.position.x = this.width / 2;
-      this.camera.position.y = this.height / 2;
-      this.camera.position.z = -this.far / 2;
+      this.camera = new THREE.OrthographicCamera(-this.width / 2, this.width / 2, this.height / 2, -this.height / 2, 0.05, 100);
+      this.camera.position.copy(this.navball.up);
+      this.camera.position.multiplyScalar(100);
+      this.camera.position.y = this.height / 2 - (this.scale + 5) / this.scale;
       focus = this.camera.position.clone();
       focus.z = 0;
       return this.camera.lookAt(focus);
     };
 
     HUD.prototype.render = function() {
+      this.navball.update();
       this.renderer.clearDepth();
       return this.renderer.render(this.scene, this.camera);
     };
 
-    HUD.prototype.update = function() {};
+    HUD.prototype.setCraft = function(craft) {
+      this.craft = craft;
+      return this.navball.setCraft(this.craft);
+    };
 
     return HUD;
 
@@ -349,7 +369,172 @@
 }).call(this);
 
 (function() {
-  var ELLIPSE_POINTS, Orbit, OrbitCurve, TwoPI, uiCage,
+  var MARKER_SIZE, MARKER_THICKNESS, Marker, Navball, proGeometry, retroGeometry,
+    __hasProp = {}.hasOwnProperty,
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+
+  MARKER_SIZE = 0.1;
+
+  MARKER_THICKNESS = 0.02;
+
+  proGeometry = new THREE.CylinderGeometry(MARKER_SIZE, MARKER_SIZE, MARKER_THICKNESS, 16);
+
+  proGeometry.applyMatrix(y2z);
+
+  retroGeometry = new THREE.TorusGeometry(MARKER_SIZE * 0.7, MARKER_THICKNESS, 6, 36);
+
+  Marker = (function(_super) {
+    __extends(Marker, _super);
+
+    function Marker(color, geometry) {
+      Marker.__super__.constructor.apply(this, arguments);
+      this.geometry = geometry;
+      this.material = new THREE.MeshLambertMaterial({
+        color: color,
+        emissive: color
+      });
+      this.material.emissive.offsetHSL(0, -0.25, 0);
+    }
+
+    Marker.prototype.update = function(vector) {
+      this.position.copy(vector).normalize();
+      return this.lookAt(ORIGIN);
+    };
+
+    return Marker;
+
+  })(THREE.Mesh);
+
+  Navball = (function(_super) {
+    __extends(Navball, _super);
+
+    function Navball(size) {
+      this.size = size;
+      Navball.__super__.constructor.apply(this, arguments);
+      this.visible = false;
+      this.useQuaternion = true;
+      this.up.copy(Z);
+      this.Q = new THREE.Quaternion;
+      this.ball = new THREE.Mesh(new THREE.SphereGeometry(this.size, 24, 24), new THREE.MeshPhongMaterial({
+        map: THREE.ImageUtils.loadTexture('images/navball.png'),
+        bumpMap: THREE.ImageUtils.loadTexture('images/navball.png'),
+        bumpScale: 0.01
+      }));
+      this.ball.geometry.applyMatrix(y2z);
+      this.ball.up.copy(Z);
+      this.ball.useQuaternion = true;
+      this.heading = new THREE.Mesh(new THREE.TorusGeometry(MARKER_SIZE, MARKER_SIZE / 5, 6, 36), new THREE.MeshLambertMaterial({
+        color: 'yellow'
+      }));
+      this.heading.up.copy(Z);
+      this.markers = [];
+      this.addMarker({
+        color: 'green',
+        vector: (function(_this) {
+          return function() {
+            return _this.craft.mksVelocity;
+          };
+        })(this)
+      });
+      this.addMarker({
+        color: 'cyan',
+        vector: (function(_this) {
+          return function() {
+            return _this.craft.mksPosition;
+          };
+        })(this)
+      });
+      this.addMarker({
+        color: 'magenta',
+        vector: (function(_this) {
+          return function() {
+            return _this.craft.mksH;
+          };
+        })(this)
+      });
+      this.add(this.heading);
+      this.add(this.ball);
+      this.ballMatrix = new THREE.Matrix4;
+    }
+
+    Navball.prototype.addMarker = function(params) {
+      var pro, retro;
+      if (params.retro === false) {
+        pro = new Marker(params.color, proGeometry);
+        this.markers.push((function(_this) {
+          return function() {
+            return pro.update(params.vector());
+          };
+        })(this));
+        return this.add(pro);
+      } else {
+        pro = new Marker(params.color, proGeometry);
+        retro = new Marker(params.color, retroGeometry);
+        this.add(pro);
+        this.add(retro);
+        return this.markers.push((function(_this) {
+          return function() {
+            var v;
+            v = params.vector().clone();
+            pro.update(v);
+            return retro.update(v.negate());
+          };
+        })(this));
+      }
+    };
+
+    Navball.prototype.setCraft = function(craft) {
+      this.craft = craft;
+      return this.visible = true;
+    };
+
+    Navball.prototype.update = function() {
+      var angle, m, pitchAxis, rollAxis, screenUp, x, y, yawAxis, _i, _len, _ref;
+      if (!this.craft) {
+        return;
+      }
+      _ref = this.markers;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        m = _ref[_i];
+        m();
+      }
+      this.ball.quaternion.setFromUnitVectors(this.craft.orbit.out, Z.clone().negate());
+      x = X.clone().applyQuaternion(this.ball.quaternion);
+      y = Y.clone().applyQuaternion(this.ball.quaternion);
+      angle = Math.acos(x.dot(this.craft.orbit.north));
+      if (x.dot(this.craft.orbit.west) < 0) {
+        angle = TwoPI - angle;
+      }
+      this.Q.setFromAxisAngle(Z, -angle);
+      this.ball.quaternion.multiply(this.Q);
+      rollAxis = this.craft.mesh.rollAxis.clone().applyEuler(this.craft.mesh.rotation);
+      yawAxis = this.craft.mesh.yawAxis.clone().applyEuler(this.craft.mesh.rotation);
+      pitchAxis = this.craft.mesh.pitchAxis.clone().applyEuler(this.craft.mesh.rotation);
+      this.quaternion.setFromUnitVectors(rollAxis, this.up);
+      yawAxis.applyQuaternion(this.quaternion);
+      pitchAxis.applyQuaternion(this.quaternion);
+      screenUp = Y;
+      angle = Math.acos(screenUp.dot(yawAxis));
+      if (screenUp.dot(pitchAxis) < 0) {
+        angle = TwoPI - angle;
+      }
+      this.Q.setFromAxisAngle(rollAxis, -angle);
+      this.quaternion.multiply(this.Q);
+      rollAxis.applyQuaternion(this.Q);
+      this.heading.position.copy(rollAxis);
+      return this.heading.lookAt(ORIGIN);
+    };
+
+    return Navball;
+
+  })(THREE.Object3D);
+
+  window.Navball = Navball;
+
+}).call(this);
+
+(function() {
+  var ELLIPSE_POINTS, Orbit, OrbitCurve, uiCage,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -367,14 +552,11 @@
 
   ELLIPSE_POINTS = 2000;
 
-  TwoPI = Math.PI * 2;
-
   OrbitCurve = (function(_super) {
     __extends(OrbitCurve, _super);
 
     function OrbitCurve(mu) {
       this.mu = mu;
-      this.h = new THREE.Vector3;
       this.e = new THREE.Vector3;
       this.eY = new THREE.Vector3;
       this.eZ = new THREE.Vector3;
@@ -384,20 +566,19 @@
       this.rotation = new THREE.Matrix4;
     }
 
-    OrbitCurve.prototype.update = function(r, v) {
+    OrbitCurve.prototype.update = function(r, v, h) {
       var x, y, zAngle;
       this.r = r.clone().normalize();
-      this.h.crossVectors(r, v);
-      this.e.crossVectors(v, this.h.clone().normalize()).multiplyScalar(this.h.length() / this.mu);
+      this.e.crossVectors(v, h.clone().normalize()).multiplyScalar(h.length() / this.mu);
       this.e.sub(this.r);
       this.ecc = this.e.length();
       if (this.ecc < 1e-10) {
         this.e.copy(X);
       }
-      this.P = this.h.lengthSq() / this.mu;
+      this.P = h.lengthSq() / this.mu;
       this.c = this.P / (1 + this.ecc);
       this.e.normalize();
-      this.eZ = this.h.clone().normalize();
+      this.eZ = h.clone().normalize();
       this.eY.crossVectors(this.eZ, this.e);
       this.q1.setFromUnitVectors(Z, this.eZ);
       x = X.clone().applyQuaternion(this.q1);
@@ -457,11 +638,17 @@
       this.add(this.line);
       this.planet.add(this);
       this.curve = new OrbitCurve(this.planet.mu);
+      this.out = new THREE.Vector3;
+      this.north = new THREE.Vector3;
+      this.west = new THREE.Vector3;
     }
 
-    Orbit.prototype.update = function(r, v) {
+    Orbit.prototype.update = function(r, v, h) {
       var path;
-      this.curve.update(r, v);
+      this.out.copy(r.clone().normalize());
+      this.west.crossVectors(this.out, Z).normalize();
+      this.north.crossVectors(this.west, this.out);
+      this.curve.update(r, v, h);
       path = new THREE.CurvePath;
       path.add(this.curve);
       this.line.geometry.vertices = path.createPointsGeometry(ELLIPSE_POINTS).vertices;
@@ -503,9 +690,9 @@
     Planet.prototype.orbitalState = function(altitude) {
       var R, V;
       R = this.radius + altitude;
-      V = Math.sqrt(this.mu / R) * 1.1;
+      V = Math.sqrt(this.mu / R);
       return {
-        r: Y.clone().normalize().multiplyScalar(R).toArray(),
+        r: Y.clone().normalize().multiplyScalar(-R).toArray(),
         v: X.clone().multiplyScalar(V).toArray(),
         mu: this.mu
       };
@@ -652,7 +839,11 @@
     };
 
     World.prototype.addCraft = function(craft) {
+      var align;
       this.crafts[craft.craftId] = craft;
+      align = new THREE.Matrix4;
+      align.lookAt(craft.mesh.rollAxis, craft.mksVelocity.clone().normalize(), craft.mesh.yawAxis);
+      craft.mesh.applyMatrix(align);
       return this.scene.add(craft);
     };
 

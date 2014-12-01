@@ -12,14 +12,14 @@ class Craft extends THREE.Object3D
 
         @mesh = new THREE.Mesh
         @mesh.geometry = new THREE.CylinderGeometry size*0.25, size*0.5, size
-        @mesh.material = new THREE.MeshPhongMaterial 
-            color: 0xefefef
+        @mesh.material = new THREE.MeshPhongMaterial color: 0xefefef
         @mesh.matrixAutoUpdate = true
         @mesh.receiveShadow = true
         @add @mesh
 
         @mksPosition = new THREE.Vector3
         @mksVelocity = new THREE.Vector3
+        @mksH = new THREE.Vector3           # Specific Ang Mom
 
         @mesh.rollAxis = @mesh.up
         @mesh.yawAxis = X
@@ -44,14 +44,16 @@ class Craft extends THREE.Object3D
         @orbit = new Orbit @planet
         @orbit.visible = false
         @updateState data
+        @mesh.lookAt @mksVelocity
 
 
     updateState: (state)->
         oldV = @mksVelocity.clone()
         @mksPosition.copy state.r
         @mksVelocity.copy state.v
+        @mksH.crossVectors @mksPosition, @mksVelocity
         if @orbit.visible
-            @orbit.update @mksPosition, @mksVelocity
+            @orbit.update @mksPosition, @mksVelocity, @mksH
         
         setGameVector @mksPosition, @position
         $acceleration.subVectors oldV, @mksVelocity
@@ -80,21 +82,24 @@ class Craft extends THREE.Object3D
         document.addEventListener("keyup", thrustEnd, false)
 
         ()=>
-            if keyboard.pressed("w")
-                @mesh.rotateOnAxis @mesh.pitchAxis, -0.05
-            else if keyboard.pressed("s")
-                @mesh.rotateOnAxis @mesh.pitchAxis, 0.05
-            else if keyboard.pressed("d")
-                @mesh.rotateOnAxis @mesh.yawAxis, -0.05
-            else if keyboard.pressed("a")
-                @mesh.rotateOnAxis @mesh.yawAxis, 0.05
-            else if keyboard.pressed("q")
-                @mesh.rotateOnAxis @mesh.rollAxis, 0.05
-            else if keyboard.pressed("e")
-                @mesh.rotateOnAxis @mesh.rollAxis, -0.05
+            if keyboard.pressed("shift")
+                ROTATION = 0.001
             else
-                return
-            sendThrust()
+                ROTATION = 0.01
+
+            if keyboard.pressed("w")
+                @mesh.rotateOnAxis @mesh.pitchAxis, ROTATION
+            if keyboard.pressed("s")
+                @mesh.rotateOnAxis @mesh.pitchAxis, -ROTATION
+            if keyboard.pressed("d")
+                @mesh.rotateOnAxis @mesh.yawAxis, -ROTATION
+            if keyboard.pressed("a")
+                @mesh.rotateOnAxis @mesh.yawAxis, ROTATION
+            if keyboard.pressed("q")
+                @mesh.rotateOnAxis @mesh.rollAxis, -ROTATION
+            if keyboard.pressed("e")
+                @mesh.rotateOnAxis @mesh.rollAxis, ROTATION
+            # sendThrust()
 
 
     thrustVector: ()->
