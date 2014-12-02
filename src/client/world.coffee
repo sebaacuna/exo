@@ -6,11 +6,7 @@ class World
         @createScene()
         @createCamera()
         @createRenderer()
-
-        @keyboard = new THREEx.KeyboardState
-        @craftController = ()-> #No-op by default
-        @cameraController = ()-> #No-op as default
-
+        
         @focusObject @boi
         @scene.add @boi
 
@@ -93,11 +89,6 @@ class World
                 @addCraft new Craft(craftData, @boi)
             callback @crafts
 
-    controlCraft: (craft)->
-        @craftController = craft.controller @keyboard, @socket
-        @focusObject craft
-        craft.orbit.visible = true
-
     # Adds a craft to the client's world
     addCraft: (craft)->
         @crafts[craft.craftId] = craft
@@ -110,39 +101,5 @@ class World
         object.add @camera
         @cameraControls.target.copy ORIGIN
         @cameraControls.update()
-        return
-        C = @camera
-        # Anchor camera to object's camera target
-        # Reposition camera relative to object
-        # object.add C.target
-        # C.target.rotation.x = Math.PI/2
-        # C.target.add C
         
-        object.add C
-        return
-        $pitchAxis = X.clone() #new THREE.Vector3
-        $yawAxis = new THREE.Vector3
-        $yawAxis.copy(object.up).normalize()
-
-        @cameraController = ()=>
-            K = @keyboard
-            if K.pressed "shift"
-                if K.pressed "shift+up"
-                    C.position.z = Math.max(C.position.z/2.0, M(10))
-                if K.pressed "shift+down"
-                    C.position.z = Math.min(C.position.z*2, KM(100000))
-                if C.setFrame
-                    C.setFrame(C.position.z)
-            else
-                # $pitchAxis.crossVectors object.up, C.position
-                # $pitchAxis.normalize()
-                
-                if K.pressed "left"
-                    C.target.rotateOnAxis $yawAxis, -0.05
-                if K.pressed "right"
-                    C.target.rotateOnAxis $yawAxis, +0.05
-                if K.pressed "up"
-                    C.target.rotateOnAxis $pitchAxis, -0.05
-                if K.pressed "down"
-                    C.target.rotateOnAxis $pitchAxis, +0.05
 window.World = World

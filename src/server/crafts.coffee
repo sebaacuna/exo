@@ -22,6 +22,7 @@ class Craft
   listen: (socket)->
     console.log "listening #{@craftId}"
     socket.on "craft-#{@craftId}-thrust", (thrustVector)=>
+      console.log "#{@craftId} thrusting"
       @thrustVector.fromArray thrustVector
 
   energy: ()->

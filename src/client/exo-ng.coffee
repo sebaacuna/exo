@@ -2,19 +2,21 @@ class AdminController
     constructor: ($scope, $http)->
         world = window.game.world
         window.game.loop.push ()-> $scope.$digest()
+        window.game.loop.push ()=> @craftControl()
 
         $scope.createOrbitingCraft = ()-> 
             world.createOrbitingCraft (craft)-> 
                 $scope.$digest()
         
-        $scope.controlCraft = (craft)->
+        $scope.controlCraft = (craft)=>
             $scope.controlledCraft?.orbit.visible = false
             craft.orbit.line.material.color.setHex 0x0000ff
-            craft.orbit.visible = true
             $scope.controlledCraft = craft
             if $scope.target == craft
                 $scope.target = null
-            world.controlCraft craft
+            @craftControl = craft.controller(window.game)
+            world.focusObject craft
+            craft.orbit.visible = true
             window.game.hud.setCraft craft
             $scope.$digest()
 
@@ -31,6 +33,8 @@ class AdminController
             $scope.$digest()
 
         $scope.world = world
+
+    craftControl: ()->
 
 
 window.exoApp = angular.module "exo", []

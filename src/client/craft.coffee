@@ -62,11 +62,12 @@ class Craft extends THREE.Object3D
         @accelArrow?.setLength $acceleration.length()
         @accelArrow?.setDirection $acceleration.normalize()
 
-    controller: (keyboard, socket)->
-        socket.emit "control", @craftId
+    controller: (game)->
+        kb = game.keyboard
+        game.socket.emit "control", @craftId
         
         sendThrust = ()=>
-            socket.emit "#{@channel}-thrust", @thrustVector().toArray()
+            game.socket.emit "#{@channel}-thrust", @thrustVector().toArray()
         thrustStart = (event)=>
             if event.keyCode == 32 #space
                 setThrust 1.0
@@ -78,28 +79,29 @@ class Craft extends THREE.Object3D
                 @throttle = throttle
                 sendThrust()
 
-        document.addEventListener("keydown", thrustStart, false)
-        document.addEventListener("keyup", thrustEnd, false)
-
         ()=>
-            if keyboard.pressed("shift")
+            if kb.pressed("shift")
                 ROTATION = 0.001
             else
                 ROTATION = 0.01
 
-            if keyboard.pressed("w")
+            if kb.pressed("w")
                 @mesh.rotateOnAxis @mesh.pitchAxis, ROTATION
-            if keyboard.pressed("s")
+            if kb.pressed("s")
                 @mesh.rotateOnAxis @mesh.pitchAxis, -ROTATION
-            if keyboard.pressed("d")
+            if kb.pressed("d")
                 @mesh.rotateOnAxis @mesh.yawAxis, -ROTATION
-            if keyboard.pressed("a")
+            if kb.pressed("a")
                 @mesh.rotateOnAxis @mesh.yawAxis, ROTATION
-            if keyboard.pressed("q")
+            if kb.pressed("q")
                 @mesh.rotateOnAxis @mesh.rollAxis, -ROTATION
-            if keyboard.pressed("e")
+            if kb.pressed("e")
                 @mesh.rotateOnAxis @mesh.rollAxis, ROTATION
-            # sendThrust()
+
+            if kb.pressed("space")
+                setThrust 1.0
+            else
+                setThrust 0.0
 
 
     thrustVector: ()->

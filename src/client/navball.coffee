@@ -95,7 +95,6 @@ class Navball extends THREE.Object3D
         @Q.setFromAxisAngle Z, -angle
         @ball.quaternion.multiply @Q
 
-
         rollAxis = @craft.mesh.rollAxis.clone().applyEuler @craft.mesh.rotation
         yawAxis = @craft.mesh.yawAxis.clone().applyEuler @craft.mesh.rotation
         pitchAxis = @craft.mesh.pitchAxis.clone().applyEuler @craft.mesh.rotation

@@ -5,11 +5,10 @@ class Game
         @hud = new HUD @world.renderer
         
         @loop = []
-        @loop.push ()=> @world.craftController()
-        @loop.push ()=> @world.cameraController()
-        
         @socket.on "boi-#{@world.boi.planetId}-crafts", (craftStates)=> 
             @world.updateCrafts craftStates
+
+        @keyboard = new THREEx.KeyboardState
         
     start: ()->     
         $.get "/signin", (sessionID)=> 
