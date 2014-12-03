@@ -3,7 +3,7 @@
         <title>EXO</title>
         <link href="/css/font-awesome/css/font-awesome.min.css" rel="stylesheet">
         <link href='http://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
-        <link rel="stylesheet" href="/css/pure.min.css">
+        <!-- <link rel="stylesheet" href="/css/pure.min.css"> -->
         <style>
             body { 
                 margin: 0; 
@@ -33,7 +33,11 @@
             };
 
             .sidebar table {
-                width: 100%
+                width: 100px;
+            }
+
+            .sidebar table td {
+                font-size: 8px;
             }
         </style>
     </head>
@@ -71,7 +75,7 @@
                     </tr>
                 </tbody>
             </table>
-            <table class="pure-table">
+            <table ng-if="!target" class="pure-table">
                 <tbody>
                     <tr>
                         <td>Ecc</td><td>{{ eccentricity() }}</td>
@@ -93,6 +97,26 @@
                     </tr>
                 </tbody>
             </table>
+            <div ng-if="target" ng-controller="TargetController">
+                <h2>Target</h2>
+                <table class="pure-table">
+                    <tbody>
+                        <tr>
+                            <td>Inclination</td><td>{{ inclination() }}</td>
+                        </tr>
+                        <tr>
+                            <td>Intercept distance</td>
+                            <td>
+                                {{ orbitIntersector.distance.length() }} 
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>ETA</td>
+                            <td>{{ orbitIntersector.dt }} </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
         <div class="viewport">
         </div>

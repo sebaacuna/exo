@@ -44,7 +44,8 @@ class Navball extends THREE.Object3D
 
         @heading = new THREE.Mesh(
             new THREE.TorusGeometry MARKER_SIZE, MARKER_SIZE/5, 6, 36
-            new THREE.MeshLambertMaterial color: 'yellow'
+            new THREE.MeshLambertMaterial 
+                color: 'yellow'
         )
         @heading.up.copy Z
 

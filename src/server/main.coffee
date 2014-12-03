@@ -72,4 +72,4 @@ report = ()->
   console.log "------"
   for craftId, craft of simulation.crafts
     console.log craft.report()
-# setInterval report, 2000
+setInterval report, 2000

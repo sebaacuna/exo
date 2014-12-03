@@ -17,11 +17,13 @@ class Game
                 @run()
 
     run: ()->
+        counter = 0
         tick = ()=>
             @world.render()
             @hud.render()
-            for f in @loop
-                f()
+            for f,i in @loop
+                f(counter)
+            ++counter
             requestAnimationFrame tick
         tick()
 

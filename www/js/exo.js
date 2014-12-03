@@ -78,7 +78,7 @@
       this.throttle = 0;
       this.mesh.add(new THREE.AxisHelper(KM(1000)));
       this.consoleElems = {};
-      this.orbit = new Orbit(this.planet);
+      this.orbit = new Orbit(this.planet, this);
       this.orbit.visible = false;
       this.updateState(data);
       this.mesh.lookAt(this.mksVelocity);
@@ -91,7 +91,7 @@
       this.mksVelocity.copy(state.v);
       this.mksH.crossVectors(this.mksPosition, this.mksVelocity);
       if (this.orbit.visible) {
-        this.orbit.update(this.mksPosition, this.mksVelocity, this.mksH);
+        this.orbit.update();
       }
       setGameVector(this.mksPosition, this.position);
       $acceleration.subVectors(oldV, this.mksVelocity);
@@ -104,12 +104,13 @@
       return (_ref2 = this.accelArrow) != null ? _ref2.setDirection($acceleration.normalize()) : void 0;
     };
 
-    Craft.prototype.controller = function(keyboard, socket) {
-      var sendThrust, setThrust, thrustEnd, thrustStart;
-      socket.emit("control", this.craftId);
+    Craft.prototype.controller = function(game) {
+      var kb, sendThrust, setThrust, thrustEnd, thrustStart;
+      kb = game.keyboard;
+      game.socket.emit("control", this.craftId);
       sendThrust = (function(_this) {
         return function() {
-          return socket.emit("" + _this.channel + "-thrust", _this.thrustVector().toArray());
+          return game.socket.emit("" + _this.channel + "-thrust", _this.thrustVector().toArray());
         };
       })(this);
       thrustStart = (function(_this) {
@@ -134,33 +135,36 @@
           }
         };
       })(this);
-      document.addEventListener("keydown", thrustStart, false);
-      document.addEventListener("keyup", thrustEnd, false);
       return (function(_this) {
         return function() {
           var ROTATION;
-          if (keyboard.pressed("shift")) {
+          if (kb.pressed("shift")) {
             ROTATION = 0.001;
           } else {
             ROTATION = 0.01;
           }
-          if (keyboard.pressed("w")) {
+          if (kb.pressed("w")) {
             _this.mesh.rotateOnAxis(_this.mesh.pitchAxis, ROTATION);
           }
-          if (keyboard.pressed("s")) {
+          if (kb.pressed("s")) {
             _this.mesh.rotateOnAxis(_this.mesh.pitchAxis, -ROTATION);
           }
-          if (keyboard.pressed("d")) {
+          if (kb.pressed("d")) {
             _this.mesh.rotateOnAxis(_this.mesh.yawAxis, -ROTATION);
           }
-          if (keyboard.pressed("a")) {
+          if (kb.pressed("a")) {
             _this.mesh.rotateOnAxis(_this.mesh.yawAxis, ROTATION);
           }
-          if (keyboard.pressed("q")) {
+          if (kb.pressed("q")) {
             _this.mesh.rotateOnAxis(_this.mesh.rollAxis, -ROTATION);
           }
-          if (keyboard.pressed("e")) {
-            return _this.mesh.rotateOnAxis(_this.mesh.rollAxis, ROTATION);
+          if (kb.pressed("e")) {
+            _this.mesh.rotateOnAxis(_this.mesh.rollAxis, ROTATION);
+          }
+          if (kb.pressed("space")) {
+            return setThrust(1.0);
+          } else {
+            return setThrust(0.0);
           }
         };
       })(this);
@@ -191,39 +195,61 @@
 }).call(this);
 
 (function() {
-  var AdminController;
+  var AdminController, TargetController;
 
   AdminController = (function() {
-    function AdminController($scope, $http) {
+    function AdminController($scope) {
       var world;
       world = window.game.world;
-      window.game.loop.push(function() {
+      window.game.loop.push(function(counter) {
         return $scope.$digest();
+      });
+      window.game.loop.push((function(_this) {
+        return function(counter) {
+          return _this.craftControl();
+        };
+      })(this));
+      window.game.loop.push(function(counter) {
+        if ($scope.target && counter % 10 === 0) {
+          $scope.orbitIntersector.solve();
+          return true;
+        }
       });
       $scope.createOrbitingCraft = function() {
         return world.createOrbitingCraft(function(craft) {
           return $scope.$digest();
         });
       };
-      $scope.controlCraft = function(craft) {
-        var _ref;
-        if ((_ref = $scope.controlledCraft) != null) {
-          _ref.orbit.visible = false;
-        }
-        craft.orbit.line.material.color.setHex(0x0000ff);
-        craft.orbit.visible = true;
-        $scope.controlledCraft = craft;
-        if ($scope.target === craft) {
-          $scope.target = null;
-        }
-        world.controlCraft(craft);
-        window.game.hud.setCraft(craft);
-        return $scope.$digest();
-      };
+      $scope.controlCraft = (function(_this) {
+        return function(craft) {
+          var _ref, _ref1;
+          if ((_ref = $scope.orbitIntersector) != null) {
+            _ref.remove();
+          }
+          if ((_ref1 = $scope.controlledCraft) != null) {
+            _ref1.orbit.visible = false;
+          }
+          craft.orbit.line.material.color.setHex(0x0000ff);
+          $scope.controlledCraft = craft;
+          if ($scope.target === craft) {
+            $scope.target = null;
+          }
+          _this.craftControl = craft.controller(window.game);
+          world.focusObject(craft);
+          craft.orbit.visible = true;
+          window.game.hud.setCraft(craft);
+          return $scope.$digest();
+        };
+      })(this);
       $scope.targetCraft = function(craft) {
+        var _ref;
+        if ((_ref = $scope.orbitIntersector) != null) {
+          _ref.remove();
+        }
         craft.orbit.line.material.color.setHex(0x00ff00);
         craft.orbit.visible = true;
         $scope.target = craft;
+        $scope.orbitIntersector = new OrbitIntersector(world, $scope.controlledCraft.orbit, $scope.target.orbit);
         return $scope.$digest();
       };
       $scope.eccentricity = function() {
@@ -236,13 +262,33 @@
       $scope.world = world;
     }
 
+    AdminController.prototype.craftControl = function() {};
+
     return AdminController;
+
+  })();
+
+  TargetController = (function() {
+    function TargetController($scope) {
+      $scope.inclination = function() {
+        var angle, dot;
+        dot = $scope.controlledCraft.orbit.north.dot($scope.target.orbit.north);
+        dot = Math.floor(dot * 1e8) * 1e-8;
+        angle = Math.acos(dot);
+        angle = Math.floor(angle * 1e4) * 1e-4;
+        return angle * 180 / Math.PI;
+      };
+    }
+
+    return TargetController;
 
   })();
 
   window.exoApp = angular.module("exo", []);
 
   exoApp.controller("AdminController", AdminController);
+
+  exoApp.controller("TargetController", TargetController);
 
 }).call(this);
 
@@ -255,21 +301,12 @@
       this.world = new World($(".viewport"), this.socket);
       this.hud = new HUD(this.world.renderer);
       this.loop = [];
-      this.loop.push((function(_this) {
-        return function() {
-          return _this.world.craftController();
-        };
-      })(this));
-      this.loop.push((function(_this) {
-        return function() {
-          return _this.world.cameraController();
-        };
-      })(this));
       this.socket.on("boi-" + this.world.boi.planetId + "-crafts", (function(_this) {
         return function(craftStates) {
           return _this.world.updateCrafts(craftStates);
         };
       })(this));
+      this.keyboard = new THREEx.KeyboardState;
     }
 
     Game.prototype.start = function() {
@@ -284,17 +321,19 @@
     };
 
     Game.prototype.run = function() {
-      var tick;
+      var counter, tick;
+      counter = 0;
       tick = (function(_this) {
         return function() {
-          var f, _i, _len, _ref;
+          var f, i, _i, _len, _ref;
           _this.world.render();
           _this.hud.render();
           _ref = _this.loop;
-          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-            f = _ref[_i];
-            f();
+          for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+            f = _ref[i];
+            f(counter);
           }
+          ++counter;
           return requestAnimationFrame(tick);
         };
       })(this);
@@ -327,8 +366,8 @@
     HUD.prototype.createScene = function() {
       var dLight;
       this.scene = new THREE.Scene();
-      this.scene.add(new THREE.AmbientLight(0x303030));
-      dLight = new THREE.DirectionalLight(0xffffff, 0.5);
+      this.scene.add(new THREE.AmbientLight(0x666666));
+      dLight = new THREE.DirectionalLight(0xffffff, 0.75);
       dLight.position.copy(Y.clone());
       return this.scene.add(dLight);
     };
@@ -577,6 +616,7 @@
       }
       this.P = h.lengthSq() / this.mu;
       this.c = this.P / (1 + this.ecc);
+      this.semiMajorAxis = this.P / (1 - this.ecc * this.ecc);
       this.e.normalize();
       this.eZ = h.clone().normalize();
       this.eY.crossVectors(this.eZ, this.e);
@@ -598,15 +638,17 @@
     };
 
     OrbitCurve.prototype.getPoint = function(t) {
-      var X, Y, angle, cosT, length, point, sinT;
-      angle = this.f + t * TwoPI;
-      cosT = Math.cos(angle);
-      sinT = Math.sin(angle);
-      length = this.P / (1 + this.ecc * cosT);
-      X = length * cosT;
-      Y = length * sinT;
-      point = new THREE.Vector3(X, Y, 0);
-      return point;
+      return this.getPointAtTrueAnomaly(this.f + t * TwoPI);
+    };
+
+    OrbitCurve.prototype.getPointAtTrueAnomaly = function(E) {
+      var X, Y, cosE, length, sinE;
+      cosE = Math.cos(E);
+      sinE = Math.sin(E);
+      length = this.P / (1 + this.ecc * cosE);
+      X = length * cosE;
+      Y = length * sinE;
+      return new THREE.Vector3(X, Y, 0);
     };
 
     return OrbitCurve;
@@ -616,9 +658,10 @@
   Orbit = (function(_super) {
     __extends(Orbit, _super);
 
-    function Orbit(planet) {
+    function Orbit(planet, craft) {
       var geometry, i, material, _i;
       this.planet = planet;
+      this.craft = craft;
       Orbit.__super__.constructor.apply(this, arguments);
       this.periapsisCage = uiCage(KM(10), 0x00ff00);
       this.add(this.periapsisCage);
@@ -641,20 +684,54 @@
       this.out = new THREE.Vector3;
       this.north = new THREE.Vector3;
       this.west = new THREE.Vector3;
+      this.northHelper = new THREE.ArrowHelper(X, ORIGIN, KM(100000));
+      this.add(this.northHelper);
     }
 
-    Orbit.prototype.update = function(r, v, h) {
+    Orbit.prototype.update = function() {
       var path;
-      this.out.copy(r.clone().normalize());
+      this.out.copy(this.craft.mksPosition.clone().normalize());
       this.west.crossVectors(this.out, Z).normalize();
       this.north.crossVectors(this.west, this.out);
-      this.curve.update(r, v, h);
+      this.northHelper.setDirection(this.north);
+      this.curve.update(this.craft.mksPosition, this.craft.mksVelocity, this.craft.mksH);
       path = new THREE.CurvePath;
       path.add(this.curve);
       this.line.geometry.vertices = path.createPointsGeometry(ELLIPSE_POINTS).vertices;
       this.line.geometry.verticesNeedUpdate = true;
       this.line.matrix = this.curve.rotation;
+      this.meanMotion = Math.sqrt(this.planet.mu / Math.pow(this.curve.semiMajorAxis, 3));
       return this.periapsisCage.position.copy(this.curve.e);
+    };
+
+    Orbit.prototype.pointAtTime = function(t) {
+      var E, E0, M0, T, arg, cosT0;
+      cosT0 = Math.cos(this.curve.f);
+      E0 = Math.acos((this.curve.ecc + cosT0) / (1 + this.curve.ecc * cosT0));
+      if (this.curve.f > Math.PI) {
+        E0 = TwoPI - E0;
+      }
+      M0 = E0 - this.curve.ecc * Math.sin(E0);
+      E = this.eccentricFromMeanAnomaly(M0 + this.meanMotion * t);
+      arg = Math.sqrt((1 + this.curve.ecc) / (1 - this.curve.ecc));
+      arg *= Math.tan(E / 2);
+      T = 2 * Math.atan(arg);
+      return this.curve.getPointAtTrueAnomaly(T).applyMatrix4(this.curve.rotation);
+    };
+
+    Orbit.prototype.eccentricFromMeanAnomaly = function(M) {
+      var D, E, Y, YY, count;
+      E = Math.PI;
+      count = 0;
+      D = 1;
+      while (Math.abs(D) > 1e-3) {
+        Y = M + this.curve.ecc * Math.sin(E) - E;
+        YY = 1 - this.curve.ecc * Math.cos(E);
+        D = Y / YY;
+        E += D;
+        count++;
+      }
+      return E;
     };
 
     return Orbit;
@@ -662,6 +739,60 @@
   })(THREE.Object3D);
 
   window.Orbit = Orbit;
+
+}).call(this);
+
+(function() {
+  var OrbitIntersector, TIMESTEP;
+
+  TIMESTEP = 1;
+
+  OrbitIntersector = (function() {
+    function OrbitIntersector(world, A, B) {
+      this.world = world;
+      this.A = A;
+      this.B = B;
+      this.a = new THREE.Mesh(new THREE.BoxGeometry(KM(500), KM(500), KM(500)), new THREE.MeshBasicMaterial({
+        color: "red"
+      }));
+      this.b = new THREE.Mesh(new THREE.BoxGeometry(KM(500), KM(500), KM(500)), new THREE.MeshBasicMaterial({
+        color: "green"
+      }));
+      this.distance = new THREE.Vector3;
+      this.dt = 0;
+      this.world.scene.add(this.a);
+      this.world.scene.add(this.b);
+    }
+
+    OrbitIntersector.prototype.solve = function() {
+      var L, decreasing, distance, l;
+      this.dt = 0;
+      distance = new THREE.Vector3;
+      decreasing = false;
+      while (this.dt < 3600) {
+        this.dt += TIMESTEP;
+        this.a.position.copy(this.A.pointAtTime(this.dt));
+        this.b.position.copy(this.B.pointAtTime(this.dt));
+        this.distance.subVectors(this.a.position, this.b.position);
+        l = this.distance.length();
+        if (decreasing && l > L) {
+          return;
+        }
+        decreasing = l < L;
+        L = l;
+      }
+    };
+
+    OrbitIntersector.prototype.remove = function() {
+      this.world.scene.remove(this.a);
+      return this.world.scene.remove(this.b);
+    };
+
+    return OrbitIntersector;
+
+  })();
+
+  window.OrbitIntersector = OrbitIntersector;
 
 }).call(this);
 
@@ -679,6 +810,8 @@
       var mesh;
       Planet.__super__.constructor.apply(this, arguments);
       mesh = THREEx.Planets["create" + name](radius);
+      mesh.geometry.applyMatrix(y2z);
+      this.up = mesh.up = Z;
       mesh.castShadow = true;
       this.radius = radius;
       this.mu = mksG * mesh.mksMass;
@@ -689,8 +822,8 @@
 
     Planet.prototype.orbitalState = function(altitude) {
       var R, V;
-      R = this.radius + altitude;
-      V = Math.sqrt(this.mu / R);
+      R = this.radius + altitude * (1 + 2 * Math.random());
+      V = Math.sqrt(this.mu / R) * (1 + 0.2 * Math.random());
       return {
         r: Y.clone().normalize().multiplyScalar(-R).toArray(),
         v: X.clone().multiplyScalar(V).toArray(),
@@ -718,9 +851,6 @@
       this.createScene();
       this.createCamera();
       this.createRenderer();
-      this.keyboard = new THREEx.KeyboardState;
-      this.craftController = function() {};
-      this.cameraController = function() {};
       this.focusObject(this.boi);
       this.scene.add(this.boi);
     }
@@ -832,12 +962,6 @@
       })(this));
     };
 
-    World.prototype.controlCraft = function(craft) {
-      this.craftController = craft.controller(this.keyboard, this.socket);
-      this.focusObject(craft);
-      return craft.orbit.visible = true;
-    };
-
     World.prototype.addCraft = function(craft) {
       var align;
       this.crafts[craft.craftId] = craft;
@@ -848,47 +972,9 @@
     };
 
     World.prototype.focusObject = function(object) {
-      var $pitchAxis, $yawAxis, C;
       object.add(this.camera);
       this.cameraControls.target.copy(ORIGIN);
-      this.cameraControls.update();
-      return;
-      C = this.camera;
-      object.add(C);
-      return;
-      $pitchAxis = X.clone();
-      $yawAxis = new THREE.Vector3;
-      $yawAxis.copy(object.up).normalize();
-      return this.cameraController = (function(_this) {
-        return function() {
-          var K;
-          K = _this.keyboard;
-          if (K.pressed("shift")) {
-            if (K.pressed("shift+up")) {
-              C.position.z = Math.max(C.position.z / 2.0, M(10));
-            }
-            if (K.pressed("shift+down")) {
-              C.position.z = Math.min(C.position.z * 2, KM(100000));
-            }
-            if (C.setFrame) {
-              return C.setFrame(C.position.z);
-            }
-          } else {
-            if (K.pressed("left")) {
-              C.target.rotateOnAxis($yawAxis, -0.05);
-            }
-            if (K.pressed("right")) {
-              C.target.rotateOnAxis($yawAxis, +0.05);
-            }
-            if (K.pressed("up")) {
-              C.target.rotateOnAxis($pitchAxis, -0.05);
-            }
-            if (K.pressed("down")) {
-              return C.target.rotateOnAxis($pitchAxis, +0.05);
-            }
-          }
-        };
-      })(this);
+      return this.cameraControls.update();
     };
 
     return World;

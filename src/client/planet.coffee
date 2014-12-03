@@ -4,7 +4,10 @@ class Planet extends THREE.Object3D
     constructor: (name, radius)->
         super
         mesh = THREEx.Planets["create#{name}"](radius)
+        mesh.geometry.applyMatrix y2z
+        @up = mesh.up = Z
         mesh.castShadow = true
+
         @radius = radius
         @mu = mksG*mesh.mksMass
         @LO = mesh.LO
@@ -12,8 +15,8 @@ class Planet extends THREE.Object3D
         @add mesh
 
     orbitalState: (altitude)->
-        R = @radius + altitude
-        V = Math.sqrt(@mu/R)
+        R = @radius + altitude*(1+2*Math.random())
+        V = Math.sqrt(@mu/R)*(1+0.2*Math.random())
         return {
             r: Y.clone().normalize().multiplyScalar(-R).toArray()
             v: X.clone().multiplyScalar(V).toArray()

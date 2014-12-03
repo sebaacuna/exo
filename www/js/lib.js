@@ -8254,7 +8254,6 @@ THREEx.Planets.createEarth	= function(radius){
 	mesh.mksMass = 5.972e24
     mesh.LO = 160000
     mesh.planetId = 'earth'
-    mesh.rotation.x = Math.PI/2
 	return mesh	
 }
 

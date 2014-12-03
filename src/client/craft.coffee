@@ -41,7 +41,7 @@ class Craft extends THREE.Object3D
 
         @consoleElems = {}
         
-        @orbit = new Orbit @planet
+        @orbit = new Orbit @planet, @
         @orbit.visible = false
         @updateState data
         @mesh.lookAt @mksVelocity
@@ -52,8 +52,9 @@ class Craft extends THREE.Object3D
         @mksPosition.copy state.r
         @mksVelocity.copy state.v
         @mksH.crossVectors @mksPosition, @mksVelocity
+
         if @orbit.visible
-            @orbit.update @mksPosition, @mksVelocity, @mksH
+            @orbit.update()
         
         setGameVector @mksPosition, @position
         $acceleration.subVectors oldV, @mksVelocity

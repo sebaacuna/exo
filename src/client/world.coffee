@@ -63,7 +63,6 @@ class World
 
     # Creates a craft on the server and adds it to the world
     createCraft: (state, callback)->
-         #*(1+10*Math.random())
         state.name = prompt "Craft name"
         $.ajax
             type: "PUT"

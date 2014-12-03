@@ -9,8 +9,8 @@ class HUD
 
   createScene: ()->
     @scene = new THREE.Scene()
-    @scene.add new THREE.AmbientLight 0x303030
-    dLight = new THREE.DirectionalLight 0xffffff, 0.5
+    @scene.add new THREE.AmbientLight 0x666666
+    dLight = new THREE.DirectionalLight 0xffffff, 0.75
     dLight.position.copy Y.clone() #.negate()
     @scene.add dLight
 

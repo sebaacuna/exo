@@ -1,7 +1,7 @@
 async = require "async"
 crafts = require("./crafts")
 THREE = require 'three'
-TIMESCALE = 1
+TIMESCALE = 10
 
 class Simulation
   constructor: (@store)->
