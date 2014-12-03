@@ -1,0 +1,64 @@
+*
+    background: transparent
+
+body
+    margin: 0
+    font-family: Roboto, Gill Sans, sans-serif
+
+#top
+    z-index: 1000
+    color: white
+    position: absolute
+
+.viewport
+    position: absolute
+    width: auto
+    left: 0
+    right: 0
+    top: 0
+    bottom: 0
+
+@mixin exo-btn
+    padding: 8px
+    border-bottom: 2px solid transparent
+    float: left
+    text-decoration: none
+    color: white
+
+@mixin exo-btn-active
+    @include exo-btn
+    border-bottom: 2px solid
+    &:hover
+        color: white
+
+.exo-launch-btn
+    @include exo-btn
+    color: #eeeeee
+    margin-right: 10px
+    &:hover
+        color: red
+
+.exo-crafts
+    float: left
+    .exo-craft
+        float: left
+
+.exo-controlled
+    @include exo-btn-active
+    color: lightblue
+    border-color: lightblue
+
+.exo-target
+    @include exo-btn-active
+    color: lightgreen
+    border-color: lightgreen
+
+.exo-targetable
+    @include exo-btn
+    &:hover
+        color: green
+
+.exo-controlable
+    @include exo-btn
+    &:hover
+        color: blue

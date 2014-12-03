@@ -1,3 +1,79 @@
+* {
+  background: transparent; }
 
+body {
+  margin: 0;
+  font-family: Roboto, Gill Sans, sans-serif; }
+
+#top {
+  z-index: 1000;
+  color: white;
+  position: absolute; }
+
+.viewport {
+  position: absolute;
+  width: auto;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0; }
+
+.exo-launch-btn {
+  padding: 8px;
+  border-bottom: 2px solid transparent;
+  float: left;
+  text-decoration: none;
+  color: white;
+  color: #eeeeee;
+  margin-right: 10px; }
+  .exo-launch-btn:hover {
+    color: red; }
+
+.exo-crafts {
+  float: left; }
+  .exo-crafts .exo-craft {
+    float: left; }
+
+.exo-controlled {
+  padding: 8px;
+  border-bottom: 2px solid transparent;
+  float: left;
+  text-decoration: none;
+  color: white;
+  border-bottom: 2px solid;
+  color: lightblue;
+  border-color: lightblue; }
+  .exo-controlled:hover {
+    color: white; }
+
+.exo-target {
+  padding: 8px;
+  border-bottom: 2px solid transparent;
+  float: left;
+  text-decoration: none;
+  color: white;
+  border-bottom: 2px solid;
+  color: lightgreen;
+  border-color: lightgreen; }
+  .exo-target:hover {
+    color: white; }
+
+.exo-targetable {
+  padding: 8px;
+  border-bottom: 2px solid transparent;
+  float: left;
+  text-decoration: none;
+  color: white; }
+  .exo-targetable:hover {
+    color: green; }
+
+.exo-controlable {
+  padding: 8px;
+  border-bottom: 2px solid transparent;
+  float: left;
+  text-decoration: none;
+  color: white; }
+  .exo-controlable:hover {
+    color: blue; }
 
 /*# sourceMappingURL=exo.css.map */

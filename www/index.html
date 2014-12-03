@@ -3,131 +3,31 @@
         <title>EXO</title>
         <link href="/css/font-awesome/css/font-awesome.min.css" rel="stylesheet">
         <link href='http://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
-        <!-- <link rel="stylesheet" href="/css/pure.min.css"> -->
+        <link rel="stylesheet" href="/css/exo.css">
         <style>
-            body { 
-                margin: 0; 
-                font-family: Roboto;
-
-            }
             canvas { width: 100%; height: 100% }
-            .sidebar {
-                width: 200px;
-                position: absolute;
-                top: 0;
-                left: 0;
-                bottom: 0;
-                background: #eee;
-                overflow: hidden;
-            }
-            .viewport {
-                position: absolute;
-                width: auto;
-                left: 200px;
-                right: 0;
-                top: 0;
-                bottom: 0;
-            }
-            .crafts {
-
-            };
-
-            .sidebar table {
-                width: 100px;
-            }
-
-            .sidebar table td {
-                font-size: 8px;
-            }
         </style>
     </head>
     <body>
-        <div class="sidebar" ng-controller="AdminController">
-            <a class="pure-button" ng-click="createOrbitingCraft()" href="#">Create</a>
-            <table class="pure-table">
-                <tbody ng-repeat="(craftId, craft) in world.crafts">
-                    <tr ng-if="craft!=controlledCraft" >
-                        <td>
-                            <a ng-click="controlCraft(craft)" href="#">{{craft.name}}</a>
-                        </td>
-                        <td>
-                            &nbsp;
-                        </td>
-                        <td>
-                            <a  ng-if="craft!=target" 
-                                ng-click="targetCraft(craft)" 
-                                href="#">
-                                <i class="fa fa-circle-o"></i>
-                            </a>
-                            <i ng-if="craft==target" class="fa fa-dot-circle-o"></i>
-                        </td>
-                    </tr>
-                    <tr ng-if="craft==controlledCraft" >
-                        <td>
-                            {{craft.name}}
-                        </td>
-                        <td>
-                            <i class="fa fa-gamepad"></i>
-                        </td>
-                        <td>
-                            <i ng-if="craft==target" class="fa fa-dot-circle-o"></i>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-            <table ng-if="!target" class="pure-table">
-                <tbody>
-                    <tr>
-                        <td>Ecc</td><td>{{ eccentricity() }}</td>
-                    </tr>
-                    <tr>
-                        <td>R</td><td>{{controlledCraft.mksPosition.length()}}</td>
-                    </tr>
-                    <tr>
-                        <td>h</td><td>{{controlledCraft.orbit.curve.h.length()}}</td>
-                    </tr>
-                    <tr>
-                        <td>µ</td><td>{{controlledCraft.orbit.curve.mu}}</td>
-                    </tr>
-                    <tr>
-                        <td>a</td><td>{{controlledCraft.orbit.curve.a.length()}}</td>
-                    </tr>
-                    <tr>
-                        <td>f</td><td>{{controlledCraft.orbit.curve.f}}</td>
-                    </tr>
-                </tbody>
-            </table>
-            <div ng-if="target" ng-controller="TargetController">
-                <h2>Target</h2>
-                <table class="pure-table">
-                    <tbody>
-                        <tr>
-                            <td>Inclination</td><td>{{ inclination() }}</td>
-                        </tr>
-                        <tr>
-                            <td>Intercept distance</td>
-                            <td>
-                                {{ orbitIntersector.distance.length() }} 
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>ETA</td>
-                            <td>{{ orbitIntersector.dt }} </td>
-                        </tr>
-                    </tbody>
-                </table>
+        <div id="top" ng-controller="AdminController">
+            <a class="exo-launch-btn" ng-click="createOrbitingCraft()" href="#">Launch</a>
+            <div class="exo-crafts">
+                <div class="exo-craft" ng-repeat="(craftId, craft) in world.crafts">
+                    <a class="exo-controlled"  ng-click="releaseControl()"    ng-if="craft==controlledCraft" href="#" >{{craft.name}} <i class="fa fa-close"></i></a>
+                    <a class="exo-target"      ng-click="releaseTarget()"     ng-if="craft==target" href="#" >{{craft.name}} <i class="fa fa-circle-o"></i></a>
+                    <a class="exo-targetable"  ng-click="targetCraft(craft)"  ng-if="controlledCraft && craft != controlledCraft && craft != target" href="#" >{{craft.name}} <i class="fa fa-circle"></i></a>
+                    <a class="exo-controlable" ng-click="controlCraft(craft)" ng-if="!controlledCraft" href="#" >{{craft.name}} <i class="fa fa-gamepad"></i></a>
+                </div>
             </div>
         </div>
-        <div class="viewport">
-        </div>
+
+        <div class="viewport"></div>
+
         <script src="js/lib.js"></script>
         <script src="js/exo.js"></script>
         <script>
-            // $(document).ready(function() {
-                game = new Game();
-                game.start();    
-            // })
-            
+            game = new Game();
+            game.start();
         </script>
     </body>
 </html>

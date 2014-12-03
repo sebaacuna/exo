@@ -26,8 +26,8 @@ module.exports = (grunt) ->
     # Watch relevant source files and perform tasks when they change
     watch:
       client:
-        files: [ "src/client/**/*.coffee" ]
-        tasks: [ "coffee:client" ]
+        files: [ "src/client/**/*.coffee", "src/client/**/*.sass" ]
+        tasks: [ "coffee:client", "sass:client"]
 
       # appStyle:
       #   files: [ "./static-src/s[ac]ss/**.s[ac]ss" ]
