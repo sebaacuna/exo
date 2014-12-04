@@ -845,7 +845,7 @@
     OrbitIntersector.prototype.solve = function() {
       var d, d1, d2, dt, t1, t2;
       t1 = 1;
-      t2 = this.A.period;
+      t2 = this.A.period * 2;
       dt = t2 - t1;
       d1 = this.solutionAt(t1);
       d2 = this.solutionAt(t2);
@@ -920,10 +920,12 @@
     __extends(Planet, _super);
 
     function Planet(name, radius) {
-      var mesh;
+      var cloudMesh, mesh;
       Planet.__super__.constructor.apply(this, arguments);
       mesh = THREEx.Planets["create" + name](radius);
+      cloudMesh = THREEx.Planets.createEarthCloud(radius + KM(10));
       mesh.geometry.applyMatrix(y2z);
+      cloudMesh.applyMatrix(y2z);
       this.up = mesh.up = Z;
       mesh.castShadow = true;
       this.radius = radius;
@@ -931,6 +933,10 @@
       this.LO = mesh.LO;
       this.planetId = mesh.planetId;
       this.add(mesh);
+      this.add(cloudMesh);
+      setInterval((function() {
+        return cloudMesh.rotation.y += 0.0001;
+      }), 100);
     }
 
     Planet.prototype.orbitalState = function(altitude) {

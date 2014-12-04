@@ -20,7 +20,7 @@ class OrbitIntersector
 
     solve: ()->
         t1 = 1
-        t2 = @A.period
+        t2 = @A.period*2
         dt = t2- t1
         d1 = @solutionAt(t1)
         d2 = @solutionAt(t2)
