@@ -40,7 +40,14 @@
   };
 
   window.time = function(seconds) {
-    return seconds + " s";
+    return Math.floor(seconds * 10) / 10 + " s";
+  };
+
+  window.COLOR = {
+    primary: 0x00a1cb,
+    secondary: 0x61ae24,
+    important: 0xe54028,
+    info: 0x666666
   };
 
 }).call(this);
@@ -129,6 +136,9 @@
         }, {
           label: 'periapsis',
           value: distance(this.orbit.periapsis.length())
+        }, {
+          label: 'period',
+          value: time(this.orbit.period)
         }
       ];
     };
@@ -254,7 +264,7 @@
       $scope.controlCraft = (function(_this) {
         return function(craft) {
           _this.releaseControl();
-          craft.orbit.line.material.color.setHex(0x00A1CB);
+          craft.orbit.line.material.color.setHex(COLOR.primary);
           $scope.controlledCraft = craft;
           _this.craftControl = craft.controller(window.game);
           world.focusObject(craft);
@@ -265,7 +275,7 @@
       $scope.targetCraft = (function(_this) {
         return function(craft) {
           _this.releaseTarget();
-          craft.orbit.line.material.color.setHex(0x61AE24);
+          craft.orbit.line.material.color.setHex(COLOR.secondary);
           craft.orbit.visible = true;
           $scope.target = craft;
           return $scope.orbitIntersector = new OrbitIntersector(world, $scope.controlledCraft.orbit, $scope.target.orbit);
@@ -722,9 +732,9 @@
       Orbit.__super__.constructor.apply(this, arguments);
       this.periapsis = new THREE.Vector3;
       this.apoapsis = new THREE.Vector3;
-      this.periapsisCage = uiCage(KM(10), 0x00ff00);
+      this.periapsisCage = uiCage(KM(10), COLOR.info);
       this.add(this.periapsisCage);
-      this.apoapsisCage = uiCage(KM(10), 0x0000ff);
+      this.apoapsisCage = uiCage(KM(10), COLOR.info);
       this.add(this.apoapsisCage);
       material = new THREE.LineBasicMaterial({
         linewidth: 1,
@@ -757,6 +767,7 @@
       this.line.geometry.verticesNeedUpdate = true;
       this.line.matrix = this.curve.rotation;
       this.meanMotion = Math.sqrt(this.planet.mu / Math.pow(this.curve.semiMajorAxis, 3));
+      this.period = TwoPI / this.meanMotion;
       this.periapsis.copy(this.curve.e).multiplyScalar(this.curve.P / (1 + this.curve.ecc));
       this.apoapsis.copy(this.curve.e).multiplyScalar(-this.curve.P / (1 - this.curve.ecc));
       this.out.copy(this.craft.mksPosition.clone().normalize());
@@ -816,53 +827,56 @@
       this.world = world;
       this.A = A;
       this.B = B;
-      this.a = new THREE.Mesh(new THREE.BoxGeometry(KM(500), KM(500), KM(500)), new THREE.MeshBasicMaterial({
-        color: "red"
+      this.intersectMesh = new THREE.Mesh(new THREE.SphereGeometry(KM(50)), new THREE.MeshBasicMaterial({
+        color: COLOR.important
       }));
-      this.b = new THREE.Mesh(new THREE.BoxGeometry(KM(500), KM(500), KM(500)), new THREE.MeshBasicMaterial({
-        color: "green"
+      this.a = new THREE.Vector3;
+      this.b = new THREE.Vector3;
+      this.intersect = new THREE.Line(new THREE.Geometry, new THREE.LineBasicMaterial({
+        color: COLOR.important
       }));
+      this.intersect.geometry.vertices.push(this.a, this.b);
       this.t = 0;
-      this.world.scene.add(this.a);
-      this.world.scene.add(this.b);
+      this.world.scene.add(this.intersect);
+      this.world.scene.add(this.intersectMesh);
       this.instruments = [];
     }
 
     OrbitIntersector.prototype.solve = function() {
       var d, d1, d2, dt, t1, t2;
-      console.log("solve");
-      t1 = 0;
-      t2 = 3600;
-      dt = 3600;
+      t1 = 1;
+      t2 = this.A.period;
+      dt = t2 - t1;
       d1 = this.solutionAt(t1);
       d2 = this.solutionAt(t2);
-      while (dt > 10) {
+      while (dt > 1) {
         dt = dt / 2;
         d = this.solutionAt(t1 + dt);
         if (d1 < d) {
-          t1 = dt;
+          t2 = t1 + dt;
+          d2 = d;
         } else if (d2 < d) {
-          t2 = dt;
+          t1 = dt;
+          d1 = d;
         } else {
           t1 = t1 + dt / 2;
           t2 = t2 - dt / 2;
+          d1 = this.solutionAt(t1);
+          d2 = this.solutionAt(t2);
         }
-        console.log(t1, t2, dt, d1, d2, d);
       }
-      this.t = dt;
-      this.updateInstruments();
-      return this.solve = function() {};
+      this.t = t1 + dt;
+      return this.updateInstruments();
     };
 
     OrbitIntersector.prototype.solutionAt = function(t) {
-      this.a.position.copy(this.A.pointAtTime(t));
-      this.b.position.copy(this.B.pointAtTime(t));
-      return this.a.position.distanceTo(this.b.position);
+      this.a.copy(this.A.pointAtTime(t));
+      this.b.copy(this.B.pointAtTime(t));
+      return this.a.distanceTo(this.b);
     };
 
     OrbitIntersector.prototype.remove = function() {
-      this.world.scene.remove(this.a);
-      return this.world.scene.remove(this.b);
+      return this.world.scene.remove(this.intersect);
     };
 
     OrbitIntersector.prototype.updateInstruments = function() {
@@ -871,6 +885,8 @@
       dot = Math.floor(dot * 1e8) * 1e-8;
       inclination = Math.acos(dot);
       inclination = Math.floor(inclination * 1e4) * 1e-4;
+      this.intersect.geometry.verticesNeedUpdate = true;
+      this.intersectMesh.position.copy(this.a);
       return this.instruments = [
         {
           label: 'inclination',
@@ -880,7 +896,7 @@
           value: time(this.t)
         }, {
           label: 'intercept',
-          value: distance(this.a.position.distanceTo(this.b.position))
+          value: distance(this.a.distanceTo(this.b))
         }
       ];
     };

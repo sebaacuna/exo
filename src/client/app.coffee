@@ -22,4 +22,11 @@ window.angle = (radians)->
     Math.floor(radians*180/Math.PI*100)/100 + " º"
 
 window.time = (seconds)->
-    return seconds + " s"
+    return Math.floor(seconds*10)/10 + " s"
+
+window.COLOR = {
+    primary: 0x00a1cb
+    secondary: 0x61ae24
+    important: 0xe54028
+    info: 0x666666
+}

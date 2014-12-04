@@ -71,6 +71,7 @@ class Craft extends THREE.Object3D
             { label: 'eccentricity', value: Math.floor(@orbit.curve.ecc*100)/100 },
             { label: 'apoapsis',     value: distance(@orbit.apoapsis.length()) },
             { label: 'periapsis',    value: distance(@orbit.periapsis.length()) },
+            { label: 'period',      value: time(@orbit.period) },
         ]
 
 

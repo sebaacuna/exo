@@ -14,7 +14,7 @@ class MainController
         
         $scope.controlCraft = (craft)=>
             @releaseControl()
-            craft.orbit.line.material.color.setHex 0x00A1CB
+            craft.orbit.line.material.color.setHex COLOR.primary
             $scope.controlledCraft = craft
             @craftControl = craft.controller(window.game)
             world.focusObject craft
@@ -23,7 +23,7 @@ class MainController
 
         $scope.targetCraft = (craft)=>
             @releaseTarget()
-            craft.orbit.line.material.color.setHex 0x61AE24
+            craft.orbit.line.material.color.setHex COLOR.secondary
             craft.orbit.visible = true
             $scope.target = craft
             $scope.orbitIntersector = new OrbitIntersector(

@@ -68,10 +68,10 @@ class Orbit extends THREE.Object3D
         @periapsis = new THREE.Vector3
         @apoapsis = new THREE.Vector3
 
-        @periapsisCage = uiCage(KM(10), 0x00ff00)
+        @periapsisCage = uiCage(KM(10), COLOR.info)
         @add @periapsisCage
         
-        @apoapsisCage = uiCage(KM(10), 0x0000ff)
+        @apoapsisCage = uiCage(KM(10), COLOR.info)
         @add @apoapsisCage
 
         material = new THREE.LineBasicMaterial linewidth:1, color: 0x00ffff
@@ -104,6 +104,7 @@ class Orbit extends THREE.Object3D
         @line.matrix = @curve.rotation
 
         @meanMotion = Math.sqrt @planet.mu/Math.pow(@curve.semiMajorAxis,3)
+        @period = TwoPI/@meanMotion
 
         # Apoapsis and periapsis
         @periapsis.copy(@curve.e).multiplyScalar(@curve.P/(1+@curve.ecc))
