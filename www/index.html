@@ -8,8 +8,8 @@
             canvas { width: 100%; height: 100% }
         </style>
     </head>
-    <body>
-        <div id="top" ng-controller="AdminController">
+    <body ng-controller="MainController" >
+        <div id="top">
             <a class="exo-launch-btn" ng-click="createOrbitingCraft()" href="#">Launch</a>
             <div class="exo-crafts">
                 <div class="exo-craft" ng-repeat="(craftId, craft) in world.crafts">
@@ -17,6 +17,20 @@
                     <a class="exo-target"      ng-click="releaseTarget()"     ng-if="craft==target" href="#" >{{craft.name}} <i class="fa fa-circle-o"></i></a>
                     <a class="exo-targetable"  ng-click="targetCraft(craft)"  ng-if="controlledCraft && craft != controlledCraft && craft != target" href="#" >{{craft.name}} <i class="fa fa-circle"></i></a>
                     <a class="exo-controlable" ng-click="controlCraft(craft)" ng-if="!controlledCraft" href="#" >{{craft.name}} <i class="fa fa-gamepad"></i></a>
+                </div>
+            </div>
+        </div>
+        <div id="left">
+            <div class="exo-panel exo-instruments" ng-if="controlledCraft" ng-controller="InstrumentsController">
+                <div class="exo-panel-entry" ng-repeat="data in instrumentData(controlledCraft)">
+                    <div class="exo-label">{{data.label}}</div>
+                    <div class="exo-value">{{data.value}}</div>
+                </div>
+            </div>
+            <div class="exo-panel exo-target-metrics" ng-if="target" ng-controller="TargetMetricsController">
+                <div class="exo-panel-entry" ng-repeat="data in instrumentData()">
+                    <div class="exo-label">{{data.label}}</div>
+                    <div class="exo-value">{{data.value}}</div>
                 </div>
             </div>
         </div>

@@ -11,9 +11,9 @@ class OrbitCurve extends THREE.Curve
         @e = new THREE.Vector3  # Ecc vector, ellipse's X-vector
         @eY = new THREE.Vector3  # Ecc "Y"-vector
         @eZ = new THREE.Vector3  # Ecc "Z"-vector
+
         @q1 = new THREE.Quaternion
         @q2 = new THREE.Quaternion
-        @q3 = new THREE.Quaternion
         @rotation = new THREE.Matrix4
 
     update: (r,v,h)->
@@ -26,15 +26,12 @@ class OrbitCurve extends THREE.Curve
             @e.copy X
         @P = h.lengthSq()/@mu
 
-        # Distance from center to focus
-        @c = @P/(1+@ecc)
-
-        @semiMajorAxis = @P/(1-@ecc*@ecc)
-
         # Ellipse vectors and quaternions
         @e.normalize()
         @eZ = h.clone().normalize()
         @eY.crossVectors @eZ, @e
+
+        @semiMajorAxis = @P/(1-@ecc*@ecc)
 
         @q1.setFromUnitVectors Z, @eZ
         x = X.clone().applyQuaternion @q1
@@ -52,7 +49,6 @@ class OrbitCurve extends THREE.Curve
         if @r.dot(@eY) < 0
             @f = TwoPI - @f
 
-        @e.multiplyScalar @c
         @rotation.makeRotationFromQuaternion @q1
 
     getPoint: (t)->
@@ -68,7 +64,10 @@ class OrbitCurve extends THREE.Curve
 
 class Orbit extends THREE.Object3D
     constructor: (@planet, @craft)->
-        super        
+        super
+        @periapsis = new THREE.Vector3
+        @apoapsis = new THREE.Vector3
+
         @periapsisCage = uiCage(KM(10), 0x00ff00)
         @add @periapsisCage
         
@@ -90,17 +89,12 @@ class Orbit extends THREE.Object3D
         @out = new THREE.Vector3
         @north = new THREE.Vector3
         @west = new THREE.Vector3
+        @normal = new THREE.Vector3
 
-        @northHelper = new THREE.ArrowHelper X, ORIGIN, KM(100000)
-        @add @northHelper
+        @normalHelper = new THREE.ArrowHelper X, ORIGIN, KM(100000)
+        @add @normalHelper
 
     update: ()->
-        @out.copy @craft.mksPosition.clone().normalize()
-        @west.crossVectors(@out, Z).normalize() #TODO: Generalize on planet's up
-        @north.crossVectors @west, @out
-
-        @northHelper.setDirection @north
-
         @curve.update @craft.mksPosition, @craft.mksVelocity, @craft.mksH
         path = new THREE.CurvePath 
         path.add @curve
@@ -111,8 +105,20 @@ class Orbit extends THREE.Object3D
 
         @meanMotion = Math.sqrt @planet.mu/Math.pow(@curve.semiMajorAxis,3)
 
-        # Update visual cues
-        @periapsisCage.position.copy @curve.e
+        # Apoapsis and periapsis
+        @periapsis.copy(@curve.e).multiplyScalar(@curve.P/(1+@curve.ecc))
+        @apoapsis.copy(@curve.e).multiplyScalar(-@curve.P/(1-@curve.ecc))
+
+        # Orbital coordinates
+        @out.copy @craft.mksPosition.clone().normalize()
+        @west.crossVectors(@out, Z).normalize() #TODO: Generalize on planet's up
+        @north.crossVectors @west, @out
+
+        @normal.copy(@craft.mksH).normalize()
+
+        @periapsisCage.position.copy @periapsis
+        @apoapsisCage.position.copy @apoapsis
+        @normalHelper.setDirection @normal
 
     pointAtTime: (t)->
         # Starting mean anomaly

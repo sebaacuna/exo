@@ -10,6 +10,30 @@ body {
   color: white;
   position: absolute; }
 
+#left {
+  z-index: 1000;
+  position: absolute;
+  left: 0;
+  bottom: 0; }
+
+.exo-instruments {
+  color: #00a1cb; }
+
+.exo-target-metrics {
+  color: #61ae24; }
+
+.exo-panel {
+  padding: 10px;
+  overflow: auto; }
+  .exo-panel .exo-panel-entry {
+    clear: both; }
+    .exo-panel .exo-panel-entry .exo-label {
+      float: left;
+      width: 100px; }
+    .exo-panel .exo-panel-entry .exo-value {
+      float: left;
+      clear: right; }
+
 .viewport {
   position: absolute;
   width: auto;
@@ -23,11 +47,10 @@ body {
   border-bottom: 2px solid transparent;
   float: left;
   text-decoration: none;
-  color: white;
-  color: #eeeeee;
-  margin-right: 10px; }
+  color: #666666;
+  margin-right: 20px; }
   .exo-launch-btn:hover {
-    color: red; }
+    color: #e54028; }
 
 .exo-crafts {
   float: left; }
@@ -39,10 +62,10 @@ body {
   border-bottom: 2px solid transparent;
   float: left;
   text-decoration: none;
-  color: white;
+  color: #666666;
   border-bottom: 2px solid;
-  color: lightblue;
-  border-color: lightblue; }
+  color: #00a1cb;
+  border-color: #00a1cb; }
   .exo-controlled:hover {
     color: white; }
 
@@ -51,10 +74,10 @@ body {
   border-bottom: 2px solid transparent;
   float: left;
   text-decoration: none;
-  color: white;
+  color: #666666;
   border-bottom: 2px solid;
-  color: lightgreen;
-  border-color: lightgreen; }
+  color: #61ae24;
+  border-color: #61ae24; }
   .exo-target:hover {
     color: white; }
 
@@ -63,17 +86,17 @@ body {
   border-bottom: 2px solid transparent;
   float: left;
   text-decoration: none;
-  color: white; }
+  color: #666666; }
   .exo-targetable:hover {
-    color: green; }
+    color: #61ae24; }
 
 .exo-controlable {
   padding: 8px;
   border-bottom: 2px solid transparent;
   float: left;
   text-decoration: none;
-  color: white; }
+  color: #666666; }
   .exo-controlable:hover {
-    color: blue; }
+    color: #00a1cb; }
 
 /*# sourceMappingURL=exo.css.map */

@@ -33,8 +33,8 @@ class Navball extends THREE.Object3D
         @ball = new THREE.Mesh(
             new THREE.SphereGeometry @size, 24, 24
             new THREE.MeshPhongMaterial
-                map : THREE.ImageUtils.loadTexture('images/navball.png')
-                bumpMap : THREE.ImageUtils.loadTexture('images/navball.png')
+                map : THREE.ImageUtils.loadTexture('images/navball1.png')
+                # bumpMap : THREE.ImageUtils.loadTexture('images/navball.png')
                 bumpScale: 0.01
         )
 

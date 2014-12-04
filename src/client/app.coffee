@@ -15,3 +15,11 @@ window.Z = new THREE.Vector3 0, 0, 1
 window.y2z = new THREE.Matrix4().makeRotationX(Math.PI/2)
 
 window.TwoPI = Math.PI*2
+window.distance = (value)->
+    Math.floor(value/100)/10 + " km"
+
+window.angle = (radians)->
+    Math.floor(radians*180/Math.PI*100)/100 + " º"
+
+window.time = (seconds)->
+    return seconds + " s"

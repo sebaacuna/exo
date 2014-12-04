@@ -31,6 +31,18 @@
 
   window.TwoPI = Math.PI * 2;
 
+  window.distance = function(value) {
+    return Math.floor(value / 100) / 10 + " km";
+  };
+
+  window.angle = function(radians) {
+    return Math.floor(radians * 180 / Math.PI * 100) / 100 + " º";
+  };
+
+  window.time = function(seconds) {
+    return seconds + " s";
+  };
+
 }).call(this);
 
 (function() {
@@ -51,6 +63,7 @@
       this.craftId = data.craftId;
       this.channel = "craft-" + this.craftId;
       size = M(30);
+      this.instruments = [];
       this.mksMass = 1000;
       this.mesh = new THREE.Mesh;
       this.mesh.geometry = new THREE.CylinderGeometry(size * 0.25, size * 0.5, size);
@@ -94,6 +107,7 @@
         this.orbit.update();
       }
       setGameVector(this.mksPosition, this.position);
+      this.updateInstruments();
       $acceleration.subVectors(oldV, this.mksVelocity);
       if ((_ref = this.velArrow) != null) {
         _ref.setDirection(this.mksVelocity.clone().normalize());
@@ -102,6 +116,21 @@
         _ref1.setLength($acceleration.length());
       }
       return (_ref2 = this.accelArrow) != null ? _ref2.setDirection($acceleration.normalize()) : void 0;
+    };
+
+    Craft.prototype.updateInstruments = function() {
+      return this.instruments = [
+        {
+          label: 'eccentricity',
+          value: Math.floor(this.orbit.curve.ecc * 100) / 100
+        }, {
+          label: 'apoapsis',
+          value: distance(this.orbit.apoapsis.length())
+        }, {
+          label: 'periapsis',
+          value: distance(this.orbit.periapsis.length())
+        }
+      ];
     };
 
     Craft.prototype.controller = function(game) {
@@ -195,14 +224,14 @@
 }).call(this);
 
 (function() {
-  var AdminController, TargetController;
+  var InstrumentsController, MainController, TargetMetricsController;
 
-  AdminController = (function() {
-    function AdminController($scope) {
+  MainController = (function() {
+    function MainController($scope) {
       var world;
       world = window.game.world;
       window.game.loop.push(function(counter) {
-        return $scope.$digest();
+        return $scope.$apply();
       });
       window.game.loop.push((function(_this) {
         return function(counter) {
@@ -215,80 +244,112 @@
           return true;
         }
       });
-      $scope.createOrbitingCraft = function() {
-        return world.createOrbitingCraft(function(craft) {
-          return $scope.$digest();
-        });
-      };
+      $scope.createOrbitingCraft = (function(_this) {
+        return function() {
+          return world.createOrbitingCraft(function(craft) {
+            return $scope.$apply();
+          });
+        };
+      })(this);
       $scope.controlCraft = (function(_this) {
         return function(craft) {
-          var _ref, _ref1;
-          if ((_ref = $scope.orbitIntersector) != null) {
-            _ref.remove();
-          }
-          if ((_ref1 = $scope.controlledCraft) != null) {
-            _ref1.orbit.visible = false;
-          }
-          craft.orbit.line.material.color.setHex(0x0000ff);
+          _this.releaseControl();
+          craft.orbit.line.material.color.setHex(0x00A1CB);
           $scope.controlledCraft = craft;
-          if ($scope.target === craft) {
-            $scope.target = null;
-          }
           _this.craftControl = craft.controller(window.game);
           world.focusObject(craft);
           craft.orbit.visible = true;
-          window.game.hud.setCraft(craft);
-          return $scope.$digest();
+          return window.game.hud.setCraft(craft);
         };
       })(this);
-      $scope.targetCraft = function(craft) {
-        var _ref;
-        if ((_ref = $scope.orbitIntersector) != null) {
-          _ref.remove();
-        }
-        craft.orbit.line.material.color.setHex(0x00ff00);
-        craft.orbit.visible = true;
-        $scope.target = craft;
-        $scope.orbitIntersector = new OrbitIntersector(world, $scope.controlledCraft.orbit, $scope.target.orbit);
-        return $scope.$digest();
-      };
-      $scope.eccentricity = function() {
-        var _ref;
-        return Math.floor(((_ref = $scope.controlledCraft) != null ? _ref.orbit.curve.ecc : void 0) * 100) / 100;
-      };
-      world.getCrafts(function(crafts) {
-        return $scope.$digest();
-      });
-      $scope.world = world;
+      $scope.targetCraft = (function(_this) {
+        return function(craft) {
+          _this.releaseTarget();
+          craft.orbit.line.material.color.setHex(0x61AE24);
+          craft.orbit.visible = true;
+          $scope.target = craft;
+          return $scope.orbitIntersector = new OrbitIntersector(world, $scope.controlledCraft.orbit, $scope.target.orbit);
+        };
+      })(this);
+      $scope.releaseControl = (function(_this) {
+        return function() {
+          return _this.releaseControl();
+        };
+      })(this);
+      $scope.releaseTarget = (function(_this) {
+        return function() {
+          return _this.releaseTarget();
+        };
+      })(this);
+      world.getCrafts((function(_this) {
+        return function(crafts) {
+          return $scope.$apply();
+        };
+      })(this));
+      this.world = $scope.world = world;
+      this.scope = $scope;
     }
 
-    AdminController.prototype.craftControl = function() {};
+    MainController.prototype.craftControl = function() {};
 
-    return AdminController;
+    MainController.prototype.releaseTarget = function() {
+      var _ref, _ref1;
+      if ((_ref = this.scope.orbitIntersector) != null) {
+        _ref.remove();
+      }
+      if ((_ref1 = this.scope.target) != null) {
+        _ref1.orbit.visible = false;
+      }
+      return this.scope.target = null;
+    };
+
+    MainController.prototype.releaseControl = function() {
+      var _ref, _ref1;
+      this.craftControl = function() {};
+      if ((_ref = this.scope.orbitIntersector) != null) {
+        _ref.remove();
+      }
+      if ((_ref1 = this.scope.controlledCraft) != null) {
+        _ref1.orbit.visible = false;
+      }
+      this.scope.controlledCraft = null;
+      this.releaseTarget();
+      return this.world.focusObject(this.world.boi);
+    };
+
+    return MainController;
 
   })();
 
-  TargetController = (function() {
-    function TargetController($scope) {
-      $scope.inclination = function() {
-        var angle, dot;
-        dot = $scope.controlledCraft.orbit.north.dot($scope.target.orbit.north);
-        dot = Math.floor(dot * 1e8) * 1e-8;
-        angle = Math.acos(dot);
-        angle = Math.floor(angle * 1e4) * 1e-4;
-        return angle * 180 / Math.PI;
+  InstrumentsController = (function() {
+    function InstrumentsController($scope) {
+      $scope.instrumentData = function(c) {
+        return c.instruments;
       };
     }
 
-    return TargetController;
+    return InstrumentsController;
+
+  })();
+
+  TargetMetricsController = (function() {
+    function TargetMetricsController($scope) {
+      $scope.instrumentData = function() {
+        return $scope.orbitIntersector.instruments;
+      };
+    }
+
+    return TargetMetricsController;
 
   })();
 
   window.exoApp = angular.module("exo", []);
 
-  exoApp.controller("AdminController", AdminController);
+  exoApp.controller("MainController", MainController);
 
-  exoApp.controller("TargetController", TargetController);
+  exoApp.controller("InstrumentsController", InstrumentsController);
+
+  exoApp.controller("TargetMetricsController", TargetMetricsController);
 
 }).call(this);
 
@@ -455,8 +516,7 @@
       this.up.copy(Z);
       this.Q = new THREE.Quaternion;
       this.ball = new THREE.Mesh(new THREE.SphereGeometry(this.size, 24, 24), new THREE.MeshPhongMaterial({
-        map: THREE.ImageUtils.loadTexture('images/navball.png'),
-        bumpMap: THREE.ImageUtils.loadTexture('images/navball.png'),
+        map: THREE.ImageUtils.loadTexture('images/navball1.png'),
         bumpScale: 0.01
       }));
       this.ball.geometry.applyMatrix(y2z);
@@ -601,7 +661,6 @@
       this.eZ = new THREE.Vector3;
       this.q1 = new THREE.Quaternion;
       this.q2 = new THREE.Quaternion;
-      this.q3 = new THREE.Quaternion;
       this.rotation = new THREE.Matrix4;
     }
 
@@ -615,11 +674,10 @@
         this.e.copy(X);
       }
       this.P = h.lengthSq() / this.mu;
-      this.c = this.P / (1 + this.ecc);
-      this.semiMajorAxis = this.P / (1 - this.ecc * this.ecc);
       this.e.normalize();
       this.eZ = h.clone().normalize();
       this.eY.crossVectors(this.eZ, this.e);
+      this.semiMajorAxis = this.P / (1 - this.ecc * this.ecc);
       this.q1.setFromUnitVectors(Z, this.eZ);
       x = X.clone().applyQuaternion(this.q1);
       y = Y.clone().applyQuaternion(this.q1);
@@ -633,7 +691,6 @@
       if (this.r.dot(this.eY) < 0) {
         this.f = TwoPI - this.f;
       }
-      this.e.multiplyScalar(this.c);
       return this.rotation.makeRotationFromQuaternion(this.q1);
     };
 
@@ -663,6 +720,8 @@
       this.planet = planet;
       this.craft = craft;
       Orbit.__super__.constructor.apply(this, arguments);
+      this.periapsis = new THREE.Vector3;
+      this.apoapsis = new THREE.Vector3;
       this.periapsisCage = uiCage(KM(10), 0x00ff00);
       this.add(this.periapsisCage);
       this.apoapsisCage = uiCage(KM(10), 0x0000ff);
@@ -684,16 +743,13 @@
       this.out = new THREE.Vector3;
       this.north = new THREE.Vector3;
       this.west = new THREE.Vector3;
-      this.northHelper = new THREE.ArrowHelper(X, ORIGIN, KM(100000));
-      this.add(this.northHelper);
+      this.normal = new THREE.Vector3;
+      this.normalHelper = new THREE.ArrowHelper(X, ORIGIN, KM(100000));
+      this.add(this.normalHelper);
     }
 
     Orbit.prototype.update = function() {
       var path;
-      this.out.copy(this.craft.mksPosition.clone().normalize());
-      this.west.crossVectors(this.out, Z).normalize();
-      this.north.crossVectors(this.west, this.out);
-      this.northHelper.setDirection(this.north);
       this.curve.update(this.craft.mksPosition, this.craft.mksVelocity, this.craft.mksH);
       path = new THREE.CurvePath;
       path.add(this.curve);
@@ -701,7 +757,15 @@
       this.line.geometry.verticesNeedUpdate = true;
       this.line.matrix = this.curve.rotation;
       this.meanMotion = Math.sqrt(this.planet.mu / Math.pow(this.curve.semiMajorAxis, 3));
-      return this.periapsisCage.position.copy(this.curve.e);
+      this.periapsis.copy(this.curve.e).multiplyScalar(this.curve.P / (1 + this.curve.ecc));
+      this.apoapsis.copy(this.curve.e).multiplyScalar(-this.curve.P / (1 - this.curve.ecc));
+      this.out.copy(this.craft.mksPosition.clone().normalize());
+      this.west.crossVectors(this.out, Z).normalize();
+      this.north.crossVectors(this.west, this.out);
+      this.normal.copy(this.craft.mksH).normalize();
+      this.periapsisCage.position.copy(this.periapsis);
+      this.apoapsisCage.position.copy(this.apoapsis);
+      return this.normalHelper.setDirection(this.normal);
     };
 
     Orbit.prototype.pointAtTime = function(t) {
@@ -758,34 +822,67 @@
       this.b = new THREE.Mesh(new THREE.BoxGeometry(KM(500), KM(500), KM(500)), new THREE.MeshBasicMaterial({
         color: "green"
       }));
-      this.distance = new THREE.Vector3;
-      this.dt = 0;
+      this.t = 0;
       this.world.scene.add(this.a);
       this.world.scene.add(this.b);
+      this.instruments = [];
     }
 
     OrbitIntersector.prototype.solve = function() {
-      var L, decreasing, distance, l;
-      this.dt = 0;
-      distance = new THREE.Vector3;
-      decreasing = false;
-      while (this.dt < 3600) {
-        this.dt += TIMESTEP;
-        this.a.position.copy(this.A.pointAtTime(this.dt));
-        this.b.position.copy(this.B.pointAtTime(this.dt));
-        this.distance.subVectors(this.a.position, this.b.position);
-        l = this.distance.length();
-        if (decreasing && l > L) {
-          return;
+      var d, d1, d2, dt, t1, t2;
+      console.log("solve");
+      t1 = 0;
+      t2 = 3600;
+      dt = 3600;
+      d1 = this.solutionAt(t1);
+      d2 = this.solutionAt(t2);
+      while (dt > 10) {
+        dt = dt / 2;
+        d = this.solutionAt(t1 + dt);
+        if (d1 < d) {
+          t1 = dt;
+        } else if (d2 < d) {
+          t2 = dt;
+        } else {
+          t1 = t1 + dt / 2;
+          t2 = t2 - dt / 2;
         }
-        decreasing = l < L;
-        L = l;
+        console.log(t1, t2, dt, d1, d2, d);
       }
+      this.t = dt;
+      this.updateInstruments();
+      return this.solve = function() {};
+    };
+
+    OrbitIntersector.prototype.solutionAt = function(t) {
+      this.a.position.copy(this.A.pointAtTime(t));
+      this.b.position.copy(this.B.pointAtTime(t));
+      return this.a.position.distanceTo(this.b.position);
     };
 
     OrbitIntersector.prototype.remove = function() {
       this.world.scene.remove(this.a);
       return this.world.scene.remove(this.b);
+    };
+
+    OrbitIntersector.prototype.updateInstruments = function() {
+      var dot, inclination;
+      dot = this.A.normal.dot(this.B.normal);
+      dot = Math.floor(dot * 1e8) * 1e-8;
+      inclination = Math.acos(dot);
+      inclination = Math.floor(inclination * 1e4) * 1e-4;
+      return this.instruments = [
+        {
+          label: 'inclination',
+          value: angle(inclination)
+        }, {
+          label: 'eta',
+          value: time(this.t)
+        }, {
+          label: 'intercept',
+          value: distance(this.a.position.distanceTo(this.b.position))
+        }
+      ];
     };
 
     return OrbitIntersector;

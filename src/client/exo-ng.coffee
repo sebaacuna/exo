@@ -1,33 +1,29 @@
-class AdminController
+class MainController
     constructor: ($scope)->
         world = window.game.world
-        window.game.loop.push (counter)-> $scope.$digest()
+        window.game.loop.push (counter)-> $scope.$apply()
         window.game.loop.push (counter)=> @craftControl()
         window.game.loop.push (counter)->
             if $scope.target and counter%10 == 0
                 $scope.orbitIntersector.solve()
                 return true
 
-        $scope.createOrbitingCraft = ()-> 
+        $scope.createOrbitingCraft = ()=> 
             world.createOrbitingCraft (craft)-> 
-                $scope.$digest()
+                $scope.$apply()
         
         $scope.controlCraft = (craft)=>
-            $scope.orbitIntersector?.remove()
-            $scope.controlledCraft?.orbit.visible = false
-            craft.orbit.line.material.color.setHex 0x0000ff
+            @releaseControl()
+            craft.orbit.line.material.color.setHex 0x00A1CB
             $scope.controlledCraft = craft
-            if $scope.target == craft
-                $scope.target = null
             @craftControl = craft.controller(window.game)
             world.focusObject craft
             craft.orbit.visible = true
             window.game.hud.setCraft craft
-            $scope.$digest()
 
-        $scope.targetCraft = (craft)->
-            $scope.orbitIntersector?.remove()
-            craft.orbit.line.material.color.setHex 0x00ff00
+        $scope.targetCraft = (craft)=>
+            @releaseTarget()
+            craft.orbit.line.material.color.setHex 0x61AE24
             craft.orbit.visible = true
             $scope.target = craft
             $scope.orbitIntersector = new OrbitIntersector(
@@ -35,28 +31,44 @@ class AdminController
                 $scope.controlledCraft.orbit
                 $scope.target.orbit
                 )
-            $scope.$digest()
 
-        $scope.eccentricity = ()->
-            Math.floor($scope.controlledCraft?.orbit.curve.ecc*100)/100
+        $scope.releaseControl = ()=>
+            @releaseControl()
 
-        world.getCrafts (crafts)->
-            $scope.$digest()
+        $scope.releaseTarget = ()=>
+            @releaseTarget()
 
-        $scope.world = world
+        world.getCrafts (crafts)=>
+            $scope.$apply()
+
+        @world = $scope.world = world
+        @scope = $scope
 
     craftControl: ()->
 
+    releaseTarget: ()->
+        @scope.orbitIntersector?.remove()
+        @scope.target?.orbit.visible = false
+        @scope.target = null
 
-class TargetController
+    releaseControl: ()->
+        @craftControl = ()->
+        @scope.orbitIntersector?.remove()
+        @scope.controlledCraft?.orbit.visible = false
+        @scope.controlledCraft = null
+        @releaseTarget()
+        @world.focusObject @world.boi
+
+class InstrumentsController
     constructor: ($scope)->
-        $scope.inclination = ()-> 
-            dot = $scope.controlledCraft.orbit.north.dot $scope.target.orbit.north
-            dot = Math.floor(dot*1e8)*1e-8
-            angle = Math.acos dot
-            angle = Math.floor(angle*1e4)*1e-4
-            angle*180/Math.PI
+        $scope.instrumentData = (c)-> c.instruments
+
+class TargetMetricsController
+    constructor: ($scope)->
+        $scope.instrumentData = ()-> $scope.orbitIntersector.instruments
+
 
 window.exoApp = angular.module "exo", []
-exoApp.controller "AdminController", AdminController
-exoApp.controller "TargetController", TargetController
+exoApp.controller "MainController", MainController
+exoApp.controller "InstrumentsController", InstrumentsController
+exoApp.controller "TargetMetricsController", TargetMetricsController

@@ -1,3 +1,10 @@
+
+$primary: #00a1cb
+$secondary: #61ae24
+$important: #e54028
+$info: #666666
+
+
 *
     background: transparent
 
@@ -9,6 +16,30 @@ body
     z-index: 1000
     color: white
     position: absolute
+
+#left
+    z-index: 1000
+    position: absolute
+    left: 0
+    bottom: 0
+
+.exo-instruments
+    color: $primary
+
+.exo-target-metrics
+    color: $secondary
+
+.exo-panel
+    padding: 10px
+    overflow: auto
+    .exo-panel-entry
+        clear: both
+        .exo-label
+            float: left
+            width: 100px
+        .exo-value
+            float: left
+            clear: right
 
 .viewport
     position: absolute
@@ -23,7 +54,7 @@ body
     border-bottom: 2px solid transparent
     float: left
     text-decoration: none
-    color: white
+    color: $info
 
 @mixin exo-btn-active
     @include exo-btn
@@ -33,10 +64,9 @@ body
 
 .exo-launch-btn
     @include exo-btn
-    color: #eeeeee
-    margin-right: 10px
+    margin-right: 20px
     &:hover
-        color: red
+        color: $important
 
 .exo-crafts
     float: left
@@ -45,20 +75,20 @@ body
 
 .exo-controlled
     @include exo-btn-active
-    color: lightblue
-    border-color: lightblue
+    color: $primary
+    border-color: $primary
 
 .exo-target
     @include exo-btn-active
-    color: lightgreen
-    border-color: lightgreen
+    color: $secondary
+    border-color: $secondary
 
 .exo-targetable
     @include exo-btn
     &:hover
-        color: green
+        color: $secondary
 
 .exo-controlable
     @include exo-btn
     &:hover
-        color: blue
+        color: $primary

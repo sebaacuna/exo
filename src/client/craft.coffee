@@ -8,6 +8,7 @@ class Craft extends THREE.Object3D
         @channel = "craft-#{@craftId}"
         size = M(30)
 
+        @instruments = []
         @mksMass = 1000
 
         @mesh = new THREE.Mesh
@@ -57,11 +58,21 @@ class Craft extends THREE.Object3D
             @orbit.update()
         
         setGameVector @mksPosition, @position
+        @updateInstruments()
         $acceleration.subVectors oldV, @mksVelocity
         
         @velArrow?.setDirection @mksVelocity.clone().normalize()
         @accelArrow?.setLength $acceleration.length()
         @accelArrow?.setDirection $acceleration.normalize()
+
+
+    updateInstruments: ()->
+        @instruments = [
+            { label: 'eccentricity', value: Math.floor(@orbit.curve.ecc*100)/100 },
+            { label: 'apoapsis',     value: distance(@orbit.apoapsis.length()) },
+            { label: 'periapsis',    value: distance(@orbit.periapsis.length()) },
+        ]
+
 
     controller: (game)->
         kb = game.keyboard
